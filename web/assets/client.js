@@ -666,7 +666,7 @@
            body: JSON.stringify({ name: "" })
          });
          if (data?.item) {
-            window.location.href = \`playlist.html?id=\${data.item._id}\`;
+          window.location.href = `playlist.html?id=${data.item._id}`;
          }
       } catch (e) {
          console.error("Failed to create playlist", e);
