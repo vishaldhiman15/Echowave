@@ -45,3 +45,14 @@ After seeding, you can log in with:
 - GET /api/search?q=QUERY
 - POST /api/upload/image (Bearer token)
 - POST /api/upload/audio (Bearer token)
+
+## Deployment
+When deploying to a hosting service like Railway or Heroku, you must set the following environment variables in the service's configuration:
+- `MONGODB_URI`: The connection string for your MongoDB database.
+- `JWT_SECRET`: A long, random string used for signing authentication tokens.
+- `CLOUDINARY_CLOUD_NAME` (optional): Your Cloudinary cloud name.
+- `CLOUDINARY_API_KEY` (optional): Your Cloudinary API key.
+- `CLOUDINARY_API_SECRET` (optional): Your Cloudinary API secret.
+
+If the Cloudinary variables are not provided, the application will fall back to storing uploads on the local filesystem, which may not be suitable for all hosting environments.
+
