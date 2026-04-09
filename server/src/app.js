@@ -1,9 +1,7 @@
 import express from "express";
 import cors from "cors";
-import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
-import connectDB from "./config/db.js";
 import authRoutes from "./routes/auth.js";
 import artistsRoutes from "./routes/artists.js";
 import albumsRoutes from "./routes/albums.js";
@@ -13,9 +11,6 @@ import uploadRoutes from "./routes/upload.js";
 import searchRoutes from "./routes/search.js";
 import recommendationsRoutes from "./routes/recommendations.js";
 import { notFound, errorHandler } from "./middleware/error.js";
-
-dotenv.config();
-connectDB();
 
 const app = express();
 app.use(cors());
