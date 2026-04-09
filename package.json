@@ -1,0 +1,7 @@
+{
+  "name": "echowave-monorepo",
+  "private": true,
+  "workspaces": [
+    "server"
+  ]
+}
