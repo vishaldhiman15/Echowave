@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login - Spotify</title>
+    <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;700;900&display=swap" rel="stylesheet" />
+        <link rel="stylesheet" href="assets/styles.css" />
+        <link rel="icon" href="assets/img/cover-3.svg" type="image/svg+xml" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              spotify: "#1DB954",
+              base: "#121212",
+              highlight: "#1a1a1a",
+              elevated: "#242424",
+              subtext: "#b3b3b3"
+            },
+            fontFamily: {
+              sans: ['Figtree', 'sans-serif'],
+            }
+          },
+        },
+      };
+    </script>
+        <script src="assets/client.js" defer></script>
+</head>
+<body class="bg-base text-white h-screen flex flex-col items-center p-8 font-sans">
+    
+    <div class="mb-8">
+        <svg role="img" height="40" width="40" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor"><path d="M12 24C5.373 24 0 18.627 0 12S5.373 0 12 0s12 5.373 12 12-5.373 12-12 12zm5.536-8.528c-.286 0-.583-.107-.82-.303-2.316-1.92-5.242-2.34-8.7-1.282-.554.168-1.127-.143-1.296-.697-.168-.553.143-1.125.696-1.295 3.968-1.205 7.37-0.716 10.05 1.503.435.362.495 1.006.134 1.442-.23.275-.544.426-.88.426zm1.182-2.61c-.347 0-.694-.14-0.94-.407-2.686-2.825-6.846-3.414-11.233-1.584-.652.27-1.39-.04-1.66-.69-.27-.652.04-1.39.69-1.66 5.09-2.122 9.948-1.42 13.08 2.215.428.496.37 1.246-.126 1.673-.243.21-.527.316-.81.316zm1.258-2.736C16.892 7.02 11.294 6.643 6.558 8.08c-.76.232-1.558-.198-1.79-.958-.232-.76.198-1.558.958-1.79 5.485-1.662 11.89-1.246 15.65 1.84.624.513.714 1.434.202 2.057-.427.525-1.21.663-1.764.218z" fill="#fff"></path></svg>
+    </div>
+
+    <div class="w-full max-w-[324px] flex flex-col gap-6">
+        <h1 class="text-4xl font-bold text-center mb-4">Welcome back</h1>
+        
+        <form id="login-form" class="flex flex-col gap-4">
+            <div id="auth-error" class="hidden text-sm text-red-300 font-medium"></div>
+            <div class="flex flex-col gap-2">
+                <label for="email" class="text-sm font-bold">Email</label>
+                <input type="email" id="email" autocomplete="email" class="bg-base border border-gray-600 rounded p-3 text-base text-white focus:outline-none focus:border-white focus:ring-1 focus:ring-white transition" />
+            </div>
+            <div class="flex flex-col gap-2">
+                <label for="password" class="text-sm font-bold">Password</label>
+                <input type="password" id="password" autocomplete="current-password" class="bg-base border border-gray-600 rounded p-3 text-base text-white focus:outline-none focus:border-white focus:ring-1 focus:ring-white transition" />
+            </div>
+            <button type="submit" class="bg-spotify text-black font-bold py-3.5 px-8 rounded-full hover:scale-105 transition mt-4">Continue</button>
+        </form>
+
+        <div class="flex items-center gap-4 text-subtext text-xs font-bold uppercase my-2">
+            <div class="h-[1px] bg-gray-700 flex-1"></div>
+            <span>or</span>
+            <div class="h-[1px] bg-gray-700 flex-1"></div>
+        </div>
+
+        <div class="flex flex-col gap-2">
+            <button class="border border-gray-600 rounded-full py-2.5 px-6 font-bold flex items-center justify-between hover:border-white transition">
+                <svg role="img" viewBox="0 0 24 24" fill="currentColor" height="20" width="20" class="text-white"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zM7 11v2h8v-2H7z"></path></svg>
+                Continue with phone number
+                <span></span>
+            </button>
+            <button class="border border-gray-600 rounded-full py-2.5 px-6 font-bold flex items-center justify-between hover:border-white transition">
+                <svg role="img" viewBox="0 0 24 24" fill="currentColor" height="20" width="20" class="text-white"><path d="M12.24 10.285V14.4h6.806c-.275 1.765-2.056 5.174-6.806 5.174-4.095 0-7.439-3.389-7.439-7.574s3.345-7.574 7.439-7.574c2.33 0 3.891.989 4.785 1.849l3.254-3.138C18.189 1.186 15.479 0 12.24 0c-6.635 0-12 5.365-12 12s5.365 12 12 12c6.926 0 11.52-4.869 11.52-11.726 0-.788-.085-1.39-.189-1.989H12.24z" fill="#fff"></path></svg>
+                Continue with Google
+                <span></span>
+            </button>
+            <button class="border border-gray-600 rounded-full py-2.5 px-6 font-bold flex items-center justify-between hover:border-white transition">
+                <svg role="img" viewBox="0 0 24 24" fill="currentColor" height="20" width="20" class="text-white"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" fill="#fff"></path></svg>
+                Continue with Facebook
+                <span></span>
+            </button>
+            <button class="border border-gray-600 rounded-full py-2.5 px-6 font-bold flex items-center justify-between hover:border-white transition">
+                <svg role="img" viewBox="0 0 24 24" fill="currentColor" height="20" width="20" class="text-white"><path d="M16.65 10.3c-.024-3.141 2.502-4.62 2.618-4.686-1.47-2.148-3.753-2.435-4.606-2.435-1.93-.198-3.805 1.152-4.787 1.152-.98 0-2.518-1.121-4.095-1.096-2.072.023-3.985 1.186-5.064 3.036-2.19 3.758-.561 9.324 1.557 12.33 1.037 1.478 2.27 3.14 3.86 3.08 1.545-.06 2.128-.984 3.996-.984 1.868 0 2.404.984 4.02.946 1.656-.036 2.723-1.503 3.738-2.956 1.171-1.685 1.65-3.321 1.674-3.411-.035-.015-3.155-1.2-3.18-4.819l.269-.162zM12.186 6.1Zm.168-5.3c1.018 0 2.273.655 2.946 1.442.593.684 1.05 1.636.936 2.571-1.111.048-2.223-.623-2.906-1.425-.595-.694-1.095-1.68-.976-2.588Z" fill="#fff"></path></svg>
+                Continue with Apple
+                <span></span>
+            </button>
+        </div>
+
+        <div class="mt-8 text-center text-subtext flex flex-col gap-4 font-bold">
+            <p>Don't have an account?</p>
+            <a href="signup.html" class="text-white hover:text-spotify hover:underline transition">Sign up</a>
+        </div>
+    </div>
+</body>
+</html>

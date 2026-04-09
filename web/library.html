@@ -1,0 +1,1062 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EchoWave — Library</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@300..900&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            spotify: "#1DB954", "spotify-h": "#1ed760",
+            base: "#121212", highlight: "#1a1a1a",
+            elevated: "#242424", card: "#181818", subtext: "#b3b3b3",
+          },
+          fontFamily: { sans: ['Figtree', 'sans-serif'] },
+        },
+      },
+    };
+  </script>
+  <style>
+    :root { --accent: #1DB954; }
+    * { box-sizing: border-box; }
+    body { font-family: 'Figtree', sans-serif; }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #404040; border-radius: 3px; }
+
+    /* Progress */
+    .prog-track { background:#555; border-radius:2px; cursor:pointer; position:relative; overflow:visible; }
+    .prog-fill  { height:100%; background:#fff; border-radius:2px; pointer-events:none; }
+    .prog-track:hover .prog-fill { background: var(--accent); }
+    .prog-thumb { position:absolute; top:50%; width:12px; height:12px; background:#fff; border-radius:50%; transform:translate(-50%,-50%); left:var(--pct,0%); opacity:0; pointer-events:none; }
+    .prog-track:hover .prog-thumb { opacity:1; }
+
+    /* Volume */
+    input[type=range].vol { -webkit-appearance:none; height:4px; background:#555; border-radius:2px; cursor:pointer; outline:none; }
+    input[type=range].vol::-webkit-slider-thumb { -webkit-appearance:none; width:12px; height:12px; background:#fff; border-radius:50%; opacity:0; }
+    .vol-wrap:hover input[type=range].vol::-webkit-slider-thumb { opacity:1; }
+
+    /* Eq bars */
+    .eq-bar { display:inline-block; width:3px; background:var(--accent); border-radius:1px; animation:eqb .7s ease-in-out infinite alternate; }
+    .eq-bar:nth-child(1){animation-duration:.5s} .eq-bar:nth-child(2){animation-delay:.15s;animation-duration:.8s} .eq-bar:nth-child(3){animation-delay:.3s;animation-duration:.6s}
+    @keyframes eqb{from{height:4px}to{height:14px}}
+
+    /* Upload drag zone */
+    .drop-zone { border: 2px dashed #404040; transition: border-color .2s, background .2s; }
+    .drop-zone.drag-over { border-color: var(--accent); background: rgba(29,185,84,.08); }
+    .drop-zone:hover { border-color: #666; }
+
+    /* Tab underline */
+    .tab-btn { position:relative; }
+    .tab-btn.active { color:#fff; }
+    .tab-btn.active::after { content:''; position:absolute; bottom:-1px; left:0; right:0; height:2px; background:var(--accent); border-radius:1px; }
+
+    /* Video card */
+    .vid-card { transition: transform .2s, box-shadow .2s; }
+    .vid-card:hover { transform: translateY(-4px); box-shadow: 0 12px 32px rgba(0,0,0,.6); }
+    .vid-card .vid-overlay { opacity:0; transition:opacity .2s; }
+    .vid-card:hover .vid-overlay { opacity:1; }
+
+    /* Pill badges */
+    .genre-pill { cursor:pointer; transition: background .15s, color .15s; }
+    .genre-pill.active { background: var(--accent); color:#000; font-weight:700; }
+
+    /* File input style */
+    .file-btn { position:relative; overflow:hidden; }
+    .file-btn input[type=file] { position:absolute; inset:0; opacity:0; cursor:pointer; }
+
+    /* Progress bar upload */
+    .upload-prog-bar { height:4px; background:var(--accent); border-radius:2px; transition:width .3s; }
+
+    /* Mcard */
+    .mcard { transition:background .2s; }
+    .mcard:hover { background:#282828!important; }
+    .mcard .pplay { opacity:0; transform:translateY(6px); transition:opacity .2s,transform .2s; }
+    .mcard:hover .pplay { opacity:1; transform:translateY(0); }
+
+    /* Nav active */
+    .nav-active { color:#fff!important; }
+  </style>
+</head>
+<body class="bg-black text-white h-screen flex flex-col overflow-hidden text-sm select-none">
+
+<div class="flex-1 flex overflow-hidden p-2 gap-2 min-h-0">
+
+  <!-- SIDEBAR -->
+  <aside class="w-[280px] shrink-0 flex-col gap-2 hidden md:flex">
+    <div class="bg-base rounded-xl p-5 flex flex-col gap-5">
+      <a href="index.html" class="flex items-center gap-2.5">
+        <svg viewBox="0 0 168 168" width="30" height="30" fill="#1DB954"><path d="M84 0C37.6 0 0 37.6 0 84s37.6 84 84 84 84-37.6 84-84S130.4 0 84 0zm38.5 121.1c-1.5 2.5-4.8 3.3-7.3 1.8C95.3 110.7 70.2 108 40.7 114.7c-2.8.7-5.7-1.1-6.3-4-.7-2.8 1.1-5.7 4-6.3 32.3-7.4 60.1-4.2 82.5 9.5 2.4 1.5 3.2 4.8 1.6 7.2zm10.3-22.9c-1.9 3.1-6 4.1-9.1 2.2C101.8 86.5 67 82.5 40 90.6c-3.5 1-7.2-.9-8.3-4.4-1-3.5.9-7.2 4.4-8.3 30.8-9.4 69.2-4.8 95.3 11.3 3.1 1.9 4.1 5.9 2.4 9zm.9-23.8C106.3 57.1 61.1 55.6 35 63.5c-4.2 1.3-8.6-1.1-9.9-5.3-1.3-4.2 1.1-8.6 5.3-9.9 30-9.1 79.9-7.3 111.4 11.4 3.8 2.2 5 7.1 2.8 10.9-2.2 3.7-7.1 5-10.8 2.7z"/></svg>
+        <span class="text-lg font-black tracking-tight">EchoWave</span>
+      </a>
+      <nav class="flex flex-col gap-0.5">
+        <a href="index.html" data-nav-link class="flex items-center gap-4 py-2 px-3 rounded-lg text-subtext hover:text-white font-semibold transition">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12.5 3.247a1 1 0 0 0-1 0L4 7.577V20h4.5v-6a1 1 0 0 1 1-1h5a1 1 0 0 1 1 1v6H20V7.577l-7.5-4.33zm-2-1.732a3 3 0 0 1 3 0l7.5 4.33a2 2 0 0 1 1 1.732V21a1 1 0 0 1-1 1h-6.5a1 1 0 0 1-1-1v-6h-3v6a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V7.577a2 2 0 0 1 1-1.732l7.5-4.33z"/></svg>
+          Home
+        </a>
+        <a href="search.html" data-nav-link class="flex items-center gap-4 py-2 px-3 rounded-lg text-subtext hover:text-white font-semibold transition">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M10.533 1.279C5.352 1.279 1.126 5.419 1.126 10.558c0 5.139 4.226 9.279 9.407 9.279 2.28 0 4.367-.872 5.948-2.323l4.41 4.733c.437.47 1.161.493 1.631.056.47-.437.494-1.161.057-1.631l-4.26-4.576c1.032-1.554 1.622-3.46 1.622-5.538 0-5.139-4.226-9.279-9.408-9.279zM3.126 10.558c0-4.006 3.301-7.279 7.407-7.279s7.407 3.273 7.407 7.279-3.301 7.279-7.407 7.279-7.407-3.273-7.407-7.279z"/></svg>
+          Search
+        </a>
+        <a href="library.html" data-nav-link class="flex items-center gap-4 py-2 px-3 rounded-lg text-white font-semibold transition">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M3 22a1 1 0 0 1-1-1V3a1 1 0 0 1 2 0v18a1 1 0 0 1-1 1zM15.5 2.134A1 1 0 0 0 14 3v18a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V6.464a1 1 0 0 0-.5-.866l-6-3.464zM9 2a1 1 0 0 0-1 1v18a1 1 0 1 0 2 0V3a1 1 0 0 0-1-1z"/></svg>
+          Your Library
+        </a>
+        <a href="videos.html" data-nav-link class="flex items-center gap-4 py-2 px-3 rounded-lg text-subtext hover:text-white font-semibold transition">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M10 15l5.19-3L10 9v6m11.56-7.83c.13.47.22 1.1.28 1.9.07.8.1 1.49.1 2.09L22 12c0 2.19-.16 3.8-.44 4.83-.25.9-.83 1.48-1.73 1.73-.47.13-1.33.22-2.65.28-1.3.07-2.49.1-3.59.1L12 19c-4.19 0-6.8-.16-7.83-.44-.9-.25-1.48-.83-1.73-1.73-.13-.47-.22-1.1-.28-1.9-.07-.8-.1-1.49-.1-2.09L2 12c0-2.19.16-3.8.44-4.83.25-.9.83-1.48 1.73-1.73.47-.13 1.33-.22 2.65-.28 1.3-.07 2.49-.1 3.59-.1L12 5c4.19 0 6.8.16 7.83.44.9.25 1.48.83 1.73 1.73z"/></svg>
+          Video Feed
+        </a>
+      </nav>
+    </div>
+
+    <div class="bg-base rounded-xl flex-1 flex flex-col overflow-hidden min-h-0 p-4">
+      <div class="text-subtext font-semibold text-xs uppercase tracking-widest mb-3 px-2">Your uploads</div>
+      <div id="sidebar-my-uploads" class="overflow-y-auto flex-1 space-y-1 text-xs">
+        <div class="text-subtext px-2 py-4 text-center">Log in to see your uploads</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="flex-1 rounded-xl flex flex-col overflow-hidden relative" style="background:linear-gradient(180deg,#2a1a3a 0%,#121212 40%)">
+
+    <header class="h-16 flex items-center justify-between px-6 sticky top-0 z-20 bg-black/20 backdrop-blur-xl shrink-0">
+      <div class="flex items-center gap-2">
+        <button id="mob-toggle" class="md:hidden bg-black/50 rounded-full p-2 text-subtext hover:text-white">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M2 3.25A.75.75 0 0 1 2.75 2.5h10.5a.75.75 0 0 1 0 1.5H2.75A.75.75 0 0 1 2 3.25zM2 8a.75.75 0 0 1 .75-.75h10.5a.75.75 0 0 1 0 1.5H2.75A.75.75 0 0 1 2 8zm0 4.75a.75.75 0 0 1 .75-.75h10.5a.75.75 0 0 1 0 1.5H2.75a.75.75 0 0 1-.75-.75z"/></svg>
+        </button>
+        <button data-action="back" class="hidden md:flex bg-black/50 rounded-full p-2 text-white/60 hover:text-white transition">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M11.03.47a.75.75 0 0 1 0 1.06L4.56 8l6.47 6.47a.75.75 0 1 1-1.06 1.06L2.44 8 9.97.47a.75.75 0 0 1 1.06 0z"/></svg>
+        </button>
+        <h1 class="text-lg font-black ml-2">Your Library</h1>
+      </div>
+      <div class="flex items-center gap-3 font-semibold" data-auth-actions>
+        <a href="signup.html" class="text-subtext hover:text-white text-sm font-bold">Sign up</a>
+        <a href="login.html" class="bg-white text-black py-2 px-6 rounded-full hover:scale-105 transition font-bold text-sm">Log in</a>
+      </div>
+    </header>
+
+    <!-- Logged out state -->
+    <div data-auth-logged-out class="flex flex-col items-center justify-center flex-1 p-8 text-center">
+      <div class="w-24 h-24 rounded-full bg-white/5 flex items-center justify-center mb-6">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor" class="text-subtext"><path d="M3 22a1 1 0 0 1-1-1V3a1 1 0 0 1 2 0v18a1 1 0 0 1-1 1zM15.5 2.134A1 1 0 0 0 14 3v18a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V6.464a1 1 0 0 0-.5-.866l-6-3.464zM9 2a1 1 0 0 0-1 1v18a1 1 0 1 0 2 0V3a1 1 0 0 0-1-1z"/></svg>
+      </div>
+      <h2 class="text-2xl font-black mb-3">Log in to see your Library</h2>
+      <p class="text-subtext max-w-sm mb-8">Upload songs and videos, like tracks, and access your personal collection.</p>
+      <div class="flex gap-3">
+        <a href="signup.html" class="border border-white/40 hover:border-white text-white font-bold py-2.5 px-7 rounded-full transition">Sign up</a>
+        <a href="login.html" class="bg-white text-black font-bold py-2.5 px-7 rounded-full hover:scale-105 transition">Log in</a>
+      </div>
+    </div>
+
+    <!-- Logged in state -->
+    <div data-auth-logged-in class="hidden flex-1 flex flex-col overflow-hidden">
+
+      <!-- Page tabs -->
+      <div class="px-6 border-b border-white/10 flex gap-6 shrink-0">
+        <button class="tab-btn active py-3 text-sm font-bold text-subtext hover:text-white transition" data-tab="overview">Overview</button>
+        <button class="tab-btn py-3 text-sm font-bold text-subtext hover:text-white transition" data-tab="upload">Upload</button>
+        <button class="tab-btn py-3 text-sm font-bold text-subtext hover:text-white transition" data-tab="my-music">My Music</button>
+        <button class="tab-btn py-3 text-sm font-bold text-subtext hover:text-white transition" data-tab="liked">Liked</button>
+      </div>
+
+      <div class="flex-1 overflow-y-auto" id="tab-content">
+
+        <!-- ═══════════ TAB: OVERVIEW ═══════════ -->
+        <div id="tab-overview" class="p-6">
+          <div class="flex items-center gap-4 mb-8">
+            <div class="w-16 h-16 rounded-full bg-gradient-to-br from-purple-600 to-spotify flex items-center justify-center shrink-0">
+              <span id="user-avatar-letter" class="text-2xl font-black">U</span>
+            </div>
+            <div>
+              <p class="text-subtext text-xs mb-0.5">Welcome back,</p>
+              <h2 class="text-2xl font-black js-user-name">User</h2>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
+            <div class="bg-card rounded-xl p-4">
+              <div id="stat-uploads" class="text-3xl font-black text-spotify mb-1">0</div>
+              <div class="text-subtext text-xs font-semibold">Uploads</div>
+            </div>
+            <div class="bg-card rounded-xl p-4">
+              <div id="stat-liked" class="text-3xl font-black text-spotify mb-1">0</div>
+              <div class="text-subtext text-xs font-semibold">Liked Songs</div>
+            </div>
+            <div class="bg-card rounded-xl p-4">
+              <div id="stat-videos" class="text-3xl font-black text-spotify mb-1">0</div>
+              <div class="text-subtext text-xs font-semibold">Videos</div>
+            </div>
+            <div class="bg-card rounded-xl p-4">
+              <div id="stat-playlists" class="text-3xl font-black text-spotify mb-1">0</div>
+              <div class="text-subtext text-xs font-semibold">Playlists</div>
+            </div>
+          </div>
+
+          <!-- Quick upload buttons -->
+          <div class="flex gap-3 flex-wrap mb-8">
+            <button onclick="switchTab('upload')" class="flex items-center gap-2 bg-spotify text-black font-bold py-2.5 px-5 rounded-full hover:bg-spotify-h transition text-sm">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/></svg>
+              Upload Music
+            </button>
+            <button onclick="switchTab('upload'); document.getElementById('upload-type-video').click();" class="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white font-bold py-2.5 px-5 rounded-full transition text-sm">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/></svg>
+              Upload Video
+            </button>
+          </div>
+
+          <!-- Recent uploads preview -->
+          <div>
+            <h3 class="text-lg font-black mb-4">Recent Uploads</h3>
+            <div id="overview-recent" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              <div class="text-subtext text-sm col-span-full">No uploads yet. <button onclick="switchTab('upload')" class="text-spotify hover:underline">Upload your first track →</button></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══════════ TAB: UPLOAD ═══════════ -->
+        <div id="tab-upload" class="p-6 hidden">
+          <h2 class="text-2xl font-black mb-6">Upload Content</h2>
+
+          <!-- Type selector -->
+          <div class="flex gap-3 mb-8">
+            <label class="flex-1 max-w-[200px]">
+              <input type="radio" name="upload-type" id="upload-type-song" value="song" class="sr-only" checked />
+              <div class="upload-type-card cursor-pointer rounded-xl p-4 bg-card border-2 border-transparent text-center transition hover:border-white/20 peer-checked:border-spotify" id="song-type-card">
+                <div class="w-12 h-12 rounded-full bg-spotify/20 flex items-center justify-center mx-auto mb-3">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="#1DB954"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
+                </div>
+                <div class="font-bold text-sm">Song / Audio</div>
+                <div class="text-subtext text-xs mt-1">MP3, WAV, FLAC, M4A</div>
+              </div>
+            </label>
+            <label class="flex-1 max-w-[200px]">
+              <input type="radio" name="upload-type" id="upload-type-video" value="video" class="sr-only" />
+              <div class="upload-type-card cursor-pointer rounded-xl p-4 bg-card border-2 border-transparent text-center transition hover:border-white/20" id="video-type-card">
+                <div class="w-12 h-12 rounded-full bg-blue-600/20 flex items-center justify-center mx-auto mb-3">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="#60a5fa"><path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/></svg>
+                </div>
+                <div class="font-bold text-sm">Music Video</div>
+                <div class="text-subtext text-xs mt-1">MP4, WebM, MOV, AVI</div>
+              </div>
+            </label>
+          </div>
+
+          <!-- SONG UPLOAD FORM -->
+          <div id="song-upload-form" class="max-w-2xl">
+            <div id="song-drop-zone" class="drop-zone rounded-2xl p-8 text-center mb-6 cursor-pointer">
+              <div id="song-drop-content">
+                <div class="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-4">
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor" class="text-subtext"><path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/></svg>
+                </div>
+                <p class="font-bold mb-1">Drag & drop your audio file</p>
+                <p class="text-subtext text-xs mb-4">MP3, WAV, FLAC, M4A, OGG — up to 50MB</p>
+                <label class="file-btn inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 font-bold py-2 px-5 rounded-full text-sm transition cursor-pointer">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/></svg>
+                  Browse files
+                  <input type="file" id="song-file" accept="audio/*,.mp3,.wav,.flac,.m4a,.ogg" />
+                </label>
+              </div>
+              <div id="song-file-preview" class="hidden">
+                <div class="flex items-center gap-3 bg-white/5 rounded-xl p-3 text-left">
+                  <div class="w-10 h-10 rounded-lg bg-spotify/20 flex items-center justify-center shrink-0">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="#1DB954"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <div id="song-file-name" class="font-bold text-sm truncate"></div>
+                    <div id="song-file-size" class="text-subtext text-xs"></div>
+                  </div>
+                  <button id="song-file-clear" class="text-subtext hover:text-white p-1">✕</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+              <div class="flex flex-col gap-1.5">
+                <label class="text-xs font-bold text-subtext uppercase tracking-wider">Track Title *</label>
+                <input id="song-title" type="text" class="bg-elevated text-white rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-spotify placeholder-subtext/60" placeholder="e.g. Blinding Lights" />
+              </div>
+              <div class="flex flex-col gap-1.5">
+                <label class="text-xs font-bold text-subtext uppercase tracking-wider">Artist *</label>
+                <input id="song-artist" type="text" class="bg-elevated text-white rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-spotify placeholder-subtext/60" placeholder="e.g. The Weeknd" />
+              </div>
+              <div class="flex flex-col gap-1.5">
+                <label class="text-xs font-bold text-subtext uppercase tracking-wider">Album</label>
+                <input id="song-album" type="text" class="bg-elevated text-white rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-spotify placeholder-subtext/60" placeholder="Album title (optional)" />
+              </div>
+              <div class="flex flex-col gap-1.5">
+                <label class="text-xs font-bold text-subtext uppercase tracking-wider">Genre</label>
+                <select id="song-genre" class="bg-elevated text-white rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-spotify">
+                  <option value="">Select genre</option>
+                  <option>Pop</option><option>Hip-Hop</option><option>Rock</option><option>Electronic</option>
+                  <option>R&B</option><option>Jazz</option><option>Classical</option><option>Bollywood</option>
+                  <option>Indie</option><option>Metal</option><option>Folk</option><option>Latin</option>
+                </select>
+              </div>
+              <div class="flex flex-col gap-1.5 sm:col-span-2">
+                <label class="text-xs font-bold text-subtext uppercase tracking-wider">Cover Art</label>
+                <label class="file-btn flex items-center gap-3 bg-elevated rounded-lg px-3 py-2.5 text-sm cursor-pointer hover:bg-white/10 transition">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" class="text-subtext shrink-0"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
+                  <span id="song-cover-label" class="text-subtext">Upload cover image (optional)</span>
+                  <input type="file" id="song-cover" accept="image/*" class="sr-only" />
+                </label>
+              </div>
+            </div>
+
+            <!-- Upload progress -->
+            <div id="song-upload-progress" class="hidden mb-4">
+              <div class="flex justify-between text-xs text-subtext mb-1.5">
+                <span id="song-upload-status">Uploading...</span>
+                <span id="song-upload-pct">0%</span>
+              </div>
+              <div class="h-1 bg-white/10 rounded-full overflow-hidden">
+                <div id="song-upload-bar" class="upload-prog-bar" style="width:0%"></div>
+              </div>
+            </div>
+
+            <div id="song-upload-msg" class="hidden text-sm mb-4 p-3 rounded-lg"></div>
+
+            <button id="song-submit" class="flex items-center gap-2 bg-spotify text-black font-bold py-3 px-8 rounded-full hover:bg-spotify-h hover:scale-105 transition text-sm">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/></svg>
+              Upload Song
+            </button>
+          </div>
+
+          <!-- VIDEO UPLOAD FORM -->
+          <div id="video-upload-form" class="max-w-2xl hidden">
+            <div id="video-drop-zone" class="drop-zone rounded-2xl p-8 text-center mb-6 cursor-pointer">
+              <div id="video-drop-content">
+                <div class="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-4">
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor" class="text-subtext"><path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/></svg>
+                </div>
+                <p class="font-bold mb-1">Drag & drop your video file</p>
+                <p class="text-subtext text-xs mb-4">MP4, WebM, MOV, AVI — up to 500MB</p>
+                <label class="file-btn inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 font-bold py-2 px-5 rounded-full text-sm transition cursor-pointer">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/></svg>
+                  Browse files
+                  <input type="file" id="video-file" accept="video/*,.mp4,.webm,.mov,.avi" />
+                </label>
+              </div>
+              <div id="video-file-preview" class="hidden">
+                <div class="flex items-center gap-3 bg-white/5 rounded-xl p-3 text-left">
+                  <div class="w-10 h-10 rounded-lg bg-blue-600/20 flex items-center justify-center shrink-0">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="#60a5fa"><path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/></svg>
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <div id="video-file-name" class="font-bold text-sm truncate"></div>
+                    <div id="video-file-size" class="text-subtext text-xs"></div>
+                  </div>
+                  <button id="video-file-clear" class="text-subtext hover:text-white p-1">✕</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Video thumbnail preview -->
+            <div id="video-thumb-container" class="hidden mb-6">
+              <label class="text-xs font-bold text-subtext uppercase tracking-wider block mb-2">Video Preview</label>
+              <video id="video-thumb-player" class="w-full max-h-48 rounded-xl bg-black object-contain" controls muted></video>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+              <div class="flex flex-col gap-1.5">
+                <label class="text-xs font-bold text-subtext uppercase tracking-wider">Video Title *</label>
+                <input id="video-title" type="text" class="bg-elevated text-white rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-spotify placeholder-subtext/60" placeholder="e.g. Blinding Lights (Official Video)" />
+              </div>
+              <div class="flex flex-col gap-1.5">
+                <label class="text-xs font-bold text-subtext uppercase tracking-wider">Artist *</label>
+                <input id="video-artist" type="text" class="bg-elevated text-white rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-spotify placeholder-subtext/60" placeholder="e.g. The Weeknd" />
+              </div>
+              <div class="flex flex-col gap-1.5">
+                <label class="text-xs font-bold text-subtext uppercase tracking-wider">Genre</label>
+                <select id="video-genre" class="bg-elevated text-white rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-spotify">
+                  <option value="">Select genre</option>
+                  <option>Pop</option><option>Hip-Hop</option><option>Rock</option><option>Electronic</option>
+                  <option>R&B</option><option>Jazz</option><option>Bollywood</option><option>Indie</option>
+                </select>
+              </div>
+              <div class="flex flex-col gap-1.5">
+                <label class="text-xs font-bold text-subtext uppercase tracking-wider">Thumbnail (optional)</label>
+                <label class="file-btn flex items-center gap-3 bg-elevated rounded-lg px-3 py-2.5 text-sm cursor-pointer hover:bg-white/10 transition">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" class="text-subtext shrink-0"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
+                  <span id="video-thumb-label" class="text-subtext">Upload thumbnail image</span>
+                  <input type="file" id="video-thumbnail" accept="image/*" class="sr-only" />
+                </label>
+              </div>
+              <div class="flex flex-col gap-1.5 sm:col-span-2">
+                <label class="text-xs font-bold text-subtext uppercase tracking-wider">Description</label>
+                <textarea id="video-desc" class="bg-elevated text-white rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-spotify placeholder-subtext/60 resize-none" rows="3" placeholder="Tell viewers about this video..."></textarea>
+              </div>
+            </div>
+
+            <div id="video-upload-progress" class="hidden mb-4">
+              <div class="flex justify-between text-xs text-subtext mb-1.5">
+                <span id="video-upload-status">Uploading...</span>
+                <span id="video-upload-pct">0%</span>
+              </div>
+              <div class="h-1 bg-white/10 rounded-full overflow-hidden">
+                <div id="video-upload-bar" class="upload-prog-bar" style="width:0%"></div>
+              </div>
+            </div>
+
+            <div id="video-upload-msg" class="hidden text-sm mb-4 p-3 rounded-lg"></div>
+
+            <button id="video-submit" class="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-8 rounded-full hover:scale-105 transition text-sm">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/></svg>
+              Upload Video
+            </button>
+          </div>
+        </div>
+
+        <!-- ═══════════ TAB: MY MUSIC ═══════════ -->
+        <div id="tab-my-music" class="p-6 hidden">
+          <div class="flex items-center justify-between mb-6">
+            <h2 class="text-2xl font-black">My Music</h2>
+            <button onclick="switchTab('upload')" class="flex items-center gap-2 text-sm font-bold text-subtext hover:text-white transition">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/></svg>
+              Upload more
+            </button>
+          </div>
+
+          <!-- Songs sub-section -->
+          <div class="mb-8">
+            <div class="flex items-center gap-2 mb-4">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" class="text-spotify"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
+              <h3 class="font-bold">Uploaded Songs</h3>
+            </div>
+            <div id="my-tracks" class="divide-y divide-white/5">
+              <div class="text-subtext text-sm py-4">No songs uploaded yet.</div>
+            </div>
+          </div>
+
+          <!-- Videos sub-section -->
+          <div>
+            <div class="flex items-center gap-2 mb-4">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" class="text-blue-400"><path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/></svg>
+              <h3 class="font-bold">Uploaded Videos</h3>
+            </div>
+            <div id="my-videos" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div class="text-subtext text-sm py-4 col-span-full">No videos uploaded yet.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══════════ TAB: LIKED ═══════════ -->
+        <div id="tab-liked" class="p-6 hidden">
+          <div class="flex items-center gap-4 mb-6">
+            <div class="w-16 h-16 rounded-lg bg-gradient-to-br from-purple-700 to-blue-400 flex items-center justify-center shrink-0">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="white"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+            </div>
+            <div>
+              <p class="text-subtext text-xs font-bold uppercase tracking-wider">Playlist</p>
+              <h2 class="text-2xl font-black">Liked Songs</h2>
+              <p id="liked-count-label" class="text-subtext text-sm">0 songs</p>
+            </div>
+          </div>
+          <div id="liked-tracks" class="divide-y divide-white/5">
+            <div class="text-subtext text-sm py-4">No liked songs yet.</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- ═══════════ PLAYER BAR ═══════════ -->
+<div id="player-bar" class="h-[90px] bg-[#181818] border-t border-white/10 flex items-center px-4 gap-3 shrink-0 z-50">
+  <div class="flex items-center gap-3 w-[30%] min-w-0">
+    <div class="relative shrink-0">
+      <img id="player-cover" class="w-14 h-14 rounded object-cover shadow-md" src="assets/img/cover-3.svg" alt="" />
+      <div id="player-eq" class="absolute inset-0 bg-black/50 rounded hidden items-center justify-center gap-[3px]">
+        <span class="eq-bar"></span><span class="eq-bar"></span><span class="eq-bar"></span>
+      </div>
+    </div>
+    <div class="min-w-0 flex-1">
+      <div id="player-title" class="font-semibold text-sm truncate">Select a track</div>
+      <div id="player-artist" class="text-subtext text-xs truncate">—</div>
+    </div>
+    <button id="player-like" class="text-subtext hover:text-white transition shrink-0 p-1">
+      <svg id="like-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+    </button>
+  </div>
+  <div class="flex-1 max-w-[45%] flex flex-col items-center gap-2">
+    <div class="flex items-center gap-5">
+      <button id="btn-shuffle" class="text-subtext hover:text-white transition relative">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/></svg>
+        <span id="shuffle-dot" class="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-spotify hidden"></span>
+      </button>
+      <button id="btn-prev" class="text-white hover:scale-105 transition">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg>
+      </button>
+      <button id="btn-play" class="w-10 h-10 rounded-full bg-white text-black flex items-center justify-center hover:scale-105 transition">
+        <svg id="play-svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="m7.05 3.606 13.49 7.788a.7.7 0 0 1 0 1.212L7.05 20.394A.7.7 0 0 1 6 19.788V4.212a.7.7 0 0 1 1.05-.606z"/></svg>
+      </button>
+      <button id="btn-next" class="text-white hover:scale-105 transition">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zm8.5-6L18 6v12z"/></svg>
+      </button>
+      <button id="btn-repeat" class="text-subtext hover:text-white transition relative">
+        <svg id="repeat-svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"/></svg>
+        <span id="repeat-dot" class="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-spotify hidden"></span>
+      </button>
+    </div>
+    <div class="flex items-center gap-2 w-full">
+      <span id="prog-time" class="text-subtext text-[11px] w-10 text-right tabular-nums">0:00</span>
+      <div id="prog-bar" class="prog-track flex-1 h-1" style="--pct:0%">
+        <div id="prog-fill" class="prog-fill" style="width:0%"></div>
+        <div class="prog-thumb"></div>
+      </div>
+      <span id="prog-dur" class="text-subtext text-[11px] w-10 tabular-nums">0:00</span>
+    </div>
+  </div>
+  <div class="flex items-center justify-end gap-3 w-[25%]">
+    <div class="vol-wrap flex items-center gap-1.5">
+      <button id="btn-mute" class="text-subtext hover:text-white transition">
+        <svg id="vol-svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
+      </button>
+      <div class="w-24">
+        <input id="vol-slider" type="range" min="0" max="100" value="80" class="vol w-full" />
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Sign-up banner -->
+<div data-preview-banner class="bg-gradient-to-r from-[#af2896] to-[#509bf5] flex justify-between items-center px-4 sm:px-8 py-2.5 z-50 shrink-0">
+  <div>
+    <p class="text-[11px] font-bold tracking-widest uppercase mb-0.5">Preview of EchoWave</p>
+    <p class="font-semibold text-sm">Sign up to upload and access unlimited music and videos.</p>
+  </div>
+  <a href="signup.html" class="bg-white text-black font-bold py-2.5 px-7 rounded-full hover:scale-105 transition text-sm shrink-0 whitespace-nowrap ml-4">Sign up free</a>
+</div>
+
+<audio id="audio-el"></audio>
+
+<script>
+// ── Helpers ──────────────────────────────────────────────────────────────────
+const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const fmt = s => { const t=Math.max(0,+s||0); return `${Math.floor(t/60)}:${String(Math.floor(t%60)).padStart(2,'0')}`; };
+const fmtSize = b => b>1e6 ? (b/1e6).toFixed(1)+' MB' : b>1e3 ? (b/1e3).toFixed(0)+' KB' : b+' B';
+const TOKEN_KEY = 'echowave_token';
+const getToken = () => { try { return localStorage.getItem(TOKEN_KEY); } catch { return null; } };
+
+const apiFetch = async (path, opts={}) => {
+  const h = new Headers(opts.headers||{});
+  const tok = getToken(); if (tok) h.set('Authorization','Bearer '+tok);
+  if (!(opts.body instanceof FormData) && opts.body && !h.has('Content-Type')) h.set('Content-Type','application/json');
+  const res = await fetch('/api'+path, {...opts, headers:h});
+  const ct = res.headers.get('content-type')||'';
+  const data = ct.includes('json') ? await res.json().catch(()=>null) : await res.text().catch(()=>null);
+  if (!res.ok) { const e = new Error((data&&data.message)||`Error ${res.status}`); e.status=res.status; throw e; }
+  return data;
+};
+
+// ── Auth state ───────────────────────────────────────────────────────────────
+let currentUser = null;
+
+const initAuth = async () => {
+  if (!getToken()) { showLoggedOut(); return; }
+  try {
+    const d = await apiFetch('/auth/me');
+    currentUser = d?.user || null;
+  } catch { currentUser = null; }
+  if (currentUser) showLoggedIn(); else showLoggedOut();
+};
+
+const showLoggedOut = () => {
+  document.querySelector('[data-auth-logged-out]').classList.remove('hidden');
+  document.querySelector('[data-auth-logged-in]').classList.add('hidden');
+};
+
+const showLoggedIn = () => {
+  document.querySelector('[data-auth-logged-out]').classList.add('hidden');
+  document.querySelector('[data-auth-logged-in]').classList.remove('hidden');
+  // Set name
+  const name = currentUser?.name || 'User';
+  document.querySelectorAll('.js-user-name').forEach(el => el.textContent = name);
+  const letter = document.getElementById('user-avatar-letter');
+  if (letter) letter.textContent = name[0]?.toUpperCase() || 'U';
+  // Update auth actions header
+  document.querySelectorAll('[data-auth-actions]').forEach(slot => {
+    slot.innerHTML = `<div class="flex items-center gap-3 font-bold text-sm">
+      <span class="text-subtext hidden sm:block">${esc(name)}</span>
+      <button data-logout class="bg-white text-black py-2 px-5 rounded-full hover:scale-105 transition">Log out</button>
+    </div>`;
+  });
+  document.querySelector('[data-preview-banner]')?.classList.add('hidden');
+  loadLibraryData();
+  switchTab('overview');
+};
+
+document.addEventListener('click', e => {
+  if (e.target.closest('[data-logout]')) { localStorage.removeItem(TOKEN_KEY); location.href='index.html'; }
+});
+
+// ── Tabs ─────────────────────────────────────────────────────────────────────
+const switchTab = (tab) => {
+  const tabContent = document.getElementById('tab-content');
+  if (tabContent) tabContent.classList.remove('hidden');
+
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  if (tabContent) {
+    Array.from(tabContent.children).forEach((panel) => {
+      if (panel.id?.startsWith('tab-')) panel.classList.add('hidden');
+    });
+  }
+  const btn = document.querySelector(`[data-tab="${tab}"]`);
+  if (btn) btn.classList.add('active');
+  const panel = document.getElementById('tab-'+tab.replace('-',''));
+  if (panel) panel.classList.remove('hidden');
+  // fix: handle dashes
+  const panelAlt = document.getElementById('tab-'+tab);
+  if (panelAlt) panelAlt.classList.remove('hidden');
+};
+
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+});
+
+// ── Upload type switcher ─────────────────────────────────────────────────────
+const songTypeCard  = document.getElementById('song-type-card');
+const videoTypeCard = document.getElementById('video-type-card');
+const songForm  = document.getElementById('song-upload-form');
+const videoForm = document.getElementById('video-upload-form');
+
+const setUploadType = (type) => {
+  if (type === 'song') {
+    songForm.classList.remove('hidden'); videoForm.classList.add('hidden');
+    songTypeCard.style.borderColor = '#1DB954'; videoTypeCard.style.borderColor = 'transparent';
+  } else {
+    videoForm.classList.remove('hidden'); songForm.classList.add('hidden');
+    videoTypeCard.style.borderColor = '#60a5fa'; songTypeCard.style.borderColor = 'transparent';
+  }
+};
+
+document.getElementById('upload-type-song').addEventListener('change', () => setUploadType('song'));
+document.getElementById('upload-type-video').addEventListener('change', () => setUploadType('video'));
+setUploadType('song'); // default
+
+// ── Drag & Drop ──────────────────────────────────────────────────────────────
+const setupDropZone = (zoneId, inputId, previewContentId, previewId, fileNameId, fileSizeId, clearId, thumbContainerId, thumbPlayerId) => {
+  const zone    = document.getElementById(zoneId);
+  const input   = document.getElementById(inputId);
+  const content = document.getElementById(previewContentId);
+  const preview = document.getElementById(previewId);
+  const nameEl  = document.getElementById(fileNameId);
+  const sizeEl  = document.getElementById(fileSizeId);
+
+  const showFile = (file) => {
+    if (!file) return;
+    content.classList.add('hidden');
+    preview.classList.remove('hidden');
+    if (nameEl) nameEl.textContent = file.name;
+    if (sizeEl) sizeEl.textContent = fmtSize(file.size);
+    // Video preview
+    if (thumbContainerId && thumbPlayerId) {
+      const tc = document.getElementById(thumbContainerId);
+      const tp = document.getElementById(thumbPlayerId);
+      if (tc && tp && file.type.startsWith('video/')) {
+        tc.classList.remove('hidden');
+        tp.src = URL.createObjectURL(file);
+      }
+    }
+  };
+
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+  zone.addEventListener('drop', e => {
+    e.preventDefault(); zone.classList.remove('drag-over');
+    const f = e.dataTransfer.files[0];
+    if (f) { const dt = new DataTransfer(); dt.items.add(f); input.files = dt.files; showFile(f); }
+  });
+  input.addEventListener('change', () => { if (input.files[0]) showFile(input.files[0]); });
+
+  const clearBtn = document.getElementById(clearId);
+  if (clearBtn) {
+    clearBtn.addEventListener('click', e => {
+      e.stopPropagation(); input.value='';
+      preview.classList.add('hidden'); content.classList.remove('hidden');
+      if (thumbContainerId) document.getElementById(thumbContainerId)?.classList.add('hidden');
+    });
+  }
+};
+
+setupDropZone('song-drop-zone','song-file','song-drop-content','song-file-preview','song-file-name','song-file-size','song-file-clear',null,null);
+setupDropZone('video-drop-zone','video-file','video-drop-content','video-file-preview','video-file-name','video-file-size','video-file-clear','video-thumb-container','video-thumb-player');
+
+// Cover file labels
+document.getElementById('song-cover').addEventListener('change', function() {
+  document.getElementById('song-cover-label').textContent = this.files[0]?.name || 'Upload cover image (optional)';
+});
+document.getElementById('video-thumbnail').addEventListener('change', function() {
+  document.getElementById('video-thumb-label').textContent = this.files[0]?.name || 'Upload thumbnail image';
+});
+
+// ── Show msg helper ──────────────────────────────────────────────────────────
+const showMsg = (id, text, ok) => {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = text;
+  el.className = `text-sm mb-4 p-3 rounded-lg ${ok ? 'bg-spotify/20 text-spotify' : 'bg-red-500/20 text-red-300'}`;
+  el.classList.remove('hidden');
+  setTimeout(() => el.classList.add('hidden'), 6000);
+};
+
+const animateProg = (barId, pctId, statusId, onDone) => {
+  const bar = document.getElementById(barId);
+  const pct = document.getElementById(pctId);
+  const st  = document.getElementById(statusId);
+  let v = 0;
+  const prog = document.getElementById(barId)?.closest('.mb-4');
+  prog?.classList.remove('hidden');
+  const iv = setInterval(() => {
+    v = Math.min(95, v + Math.random()*15);
+    if (bar) bar.style.width = v+'%';
+    if (pct) pct.textContent = Math.round(v)+'%';
+  }, 200);
+  return { finish: () => {
+    clearInterval(iv);
+    if (bar) bar.style.width='100%';
+    if (pct) pct.textContent='100%';
+    if (st) st.textContent='Done!';
+    setTimeout(() => { prog?.classList.add('hidden'); if (bar) bar.style.width='0%'; onDone && onDone(); }, 800);
+  }, error: () => {
+    clearInterval(iv);
+    prog?.classList.add('hidden');
+  }};
+};
+
+// ── SONG UPLOAD ──────────────────────────────────────────────────────────────
+document.getElementById('song-submit').addEventListener('click', async () => {
+  const title  = document.getElementById('song-title').value.trim();
+  const artist = document.getElementById('song-artist').value.trim();
+  const audioF = document.getElementById('song-file').files[0];
+
+  if (!title || !artist || !audioF) {
+    showMsg('song-upload-msg','Title, artist, and audio file are required.',false); return;
+  }
+
+  const btn = document.getElementById('song-submit');
+  btn.disabled = true; btn.textContent = 'Uploading...';
+  const prog = animateProg('song-upload-bar','song-upload-pct','song-upload-status');
+
+  try {
+    // Upload audio
+    const af = new FormData(); af.append('file', audioF);
+    const audioRes = await apiFetch('/upload/audio', { method:'POST', body:af });
+
+    // Upload cover if present
+    let coverUrl = '';
+    const coverF = document.getElementById('song-cover').files[0];
+    if (coverF) {
+      const cf = new FormData(); cf.append('file', coverF);
+      const cr = await apiFetch('/upload/image', { method:'POST', body:cf });
+      coverUrl = cr?.url || '';
+    }
+
+    // Create track
+    await apiFetch('/tracks', {
+      method:'POST',
+      body: JSON.stringify({
+        title,
+        artistName: artist,
+        albumTitle: document.getElementById('song-album').value.trim(),
+        audioUrl: audioRes?.url || '',
+        coverUrl,
+        genre: document.getElementById('song-genre').value,
+      })
+    });
+
+    prog.finish();
+    showMsg('song-upload-msg','🎵 Song uploaded successfully!',true);
+    // Reset form
+    ['song-title','song-album'].forEach(id => document.getElementById(id).value='');
+    document.getElementById('song-artist').value='';
+    document.getElementById('song-file').value='';
+    document.getElementById('song-file-preview').classList.add('hidden');
+    document.getElementById('song-drop-content').classList.remove('hidden');
+    loadLibraryData();
+  } catch(err) {
+    prog.error();
+    showMsg('song-upload-msg', err.message || 'Upload failed.',false);
+  } finally {
+    btn.disabled=false; btn.innerHTML='<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/></svg> Upload Song';
+  }
+});
+
+// ── VIDEO UPLOAD ─────────────────────────────────────────────────────────────
+document.getElementById('video-submit').addEventListener('click', async () => {
+  const title  = document.getElementById('video-title').value.trim();
+  const artist = document.getElementById('video-artist').value.trim();
+  const videoF = document.getElementById('video-file').files[0];
+
+  if (!title || !artist || !videoF) {
+    showMsg('video-upload-msg','Title, artist, and video file are required.',false); return;
+  }
+
+  const btn = document.getElementById('video-submit');
+  btn.disabled = true; btn.textContent = 'Uploading...';
+  const prog = animateProg('video-upload-bar','video-upload-pct','video-upload-status');
+
+  try {
+    // Upload video as audio (backend supports video/* via cloudinary resource_type:video)
+    const vf = new FormData(); vf.append('file', videoF);
+    const videoRes = await apiFetch('/upload/audio', { method:'POST', body:vf });
+
+    // Upload thumbnail if present
+    let thumbUrl = '';
+    const thumbF = document.getElementById('video-thumbnail').files[0];
+    if (thumbF) {
+      const tf = new FormData(); tf.append('file', thumbF);
+      const tr = await apiFetch('/upload/image', { method:'POST', body:tf });
+      thumbUrl = tr?.url || '';
+    }
+
+    // Save as a "track" with mediaType=video flag in title  
+    // (or you can extend the Track model — for now we prefix title and store videoUrl)
+    await apiFetch('/tracks', {
+      method:'POST',
+      body: JSON.stringify({
+        title,
+        artistName: artist,
+        audioUrl: videoRes?.url || '',   // stores the video URL
+        coverUrl: thumbUrl,
+        genre: document.getElementById('video-genre').value,
+        isVideo: true,
+        description: document.getElementById('video-desc').value.trim(),
+      })
+    });
+
+    prog.finish();
+    showMsg('video-upload-msg','🎬 Video uploaded successfully! It will appear in the Video Feed.',true);
+    document.getElementById('video-title').value='';
+    document.getElementById('video-artist').value='';
+    document.getElementById('video-file').value='';
+    document.getElementById('video-file-preview').classList.add('hidden');
+    document.getElementById('video-drop-content').classList.remove('hidden');
+    document.getElementById('video-thumb-container').classList.add('hidden');
+    loadLibraryData();
+  } catch(err) {
+    prog.error();
+    showMsg('video-upload-msg', err.message || 'Upload failed.',false);
+  } finally {
+    btn.disabled=false; btn.innerHTML='<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/></svg> Upload Video';
+  }
+});
+
+// ── Load library data ─────────────────────────────────────────────────────────
+const renderTrackRow = (t) => {
+  const cover = esc(t.coverUrl || t.album?.coverUrl || 'assets/img/cover-3.svg');
+  const title = esc(t.title||'Untitled');
+  const artist= esc(t.artist?.name||'');
+  const dur   = fmt(t.durationSec||0);
+  const audio = esc(t.audioUrl||'');
+  return `<div class="flex items-center gap-3 py-2.5 px-2 hover:bg-white/5 rounded-lg transition group" data-track data-title="${title}" data-artist="${artist}" data-cover="${cover}" data-duration="${t.durationSec||0}" data-audio="${audio}">
+    <button data-track-play class="shrink-0 w-8 h-8 rounded-full bg-spotify text-black flex items-center justify-center opacity-0 group-hover:opacity-100 transition hover:scale-105">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="m7.05 3.606 13.49 7.788a.7.7 0 0 1 0 1.212L7.05 20.394A.7.7 0 0 1 6 19.788V4.212a.7.7 0 0 1 1.05-.606z"/></svg>
+    </button>
+    <img src="${cover}" class="w-9 h-9 rounded object-cover shrink-0" alt="" />
+    <div class="flex-1 min-w-0">
+      <div class="font-semibold text-sm truncate">${title}</div>
+      <div class="text-subtext text-xs truncate">${artist}</div>
+    </div>
+    <div class="text-subtext text-xs tabular-nums">${dur}</div>
+  </div>`;
+};
+
+const renderVideoCard = (t) => {
+  const cover = esc(t.coverUrl || 'assets/img/cover-3.svg');
+  const title = esc(t.title||'Untitled');
+  const artist= esc(t.artist?.name||'');
+  const url   = esc(t.audioUrl||'');
+  return `<div class="vid-card bg-card rounded-xl overflow-hidden cursor-pointer" onclick="playVideo('${url}','${title}','${artist}','${cover}')">
+    <div class="relative aspect-video bg-black">
+      ${cover !== esc('assets/img/cover-3.svg') ? `<img src="${cover}" class="w-full h-full object-cover" alt="" />` : `<div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-900 to-black"><svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor" class="text-blue-400 opacity-60"><path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/></svg></div>`}
+      <div class="vid-overlay absolute inset-0 bg-black/40 flex items-center justify-center">
+        <div class="w-14 h-14 rounded-full bg-white/90 flex items-center justify-center shadow-xl">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="#000"><path d="m7.05 3.606 13.49 7.788a.7.7 0 0 1 0 1.212L7.05 20.394A.7.7 0 0 1 6 19.788V4.212a.7.7 0 0 1 1.05-.606z"/></svg>
+        </div>
+      </div>
+    </div>
+    <div class="p-3">
+      <div class="font-bold text-sm truncate mb-0.5">${title}</div>
+      <div class="text-subtext text-xs">${artist}</div>
+    </div>
+  </div>`;
+};
+
+const loadLibraryData = async () => {
+  try {
+    const [mineRes, likedRes] = await Promise.all([
+      apiFetch('/tracks/mine').catch(()=>({items:[]})),
+      apiFetch('/tracks/liked').catch(()=>({items:[]})),
+    ]);
+
+    const mine  = mineRes?.items || [];
+    const liked = likedRes?.items || [];
+    const songs  = mine.filter(t => !t.isVideo);
+    const videos = mine.filter(t => t.isVideo);
+
+    // Stats
+    document.getElementById('stat-uploads').textContent = mine.length;
+    document.getElementById('stat-liked').textContent   = liked.length;
+    document.getElementById('stat-videos').textContent  = videos.length;
+    document.getElementById('liked-count-label').textContent = liked.length + ' song' + (liked.length!==1?'s':'');
+
+    // Overview recent
+    const recentEl = document.getElementById('overview-recent');
+    if (mine.length) {
+      recentEl.innerHTML = mine.slice(0,6).map(t => {
+        const cover = esc(t.coverUrl||'assets/img/cover-3.svg');
+        const title = esc(t.title||'Untitled');
+        const artist= esc(t.artist?.name||'');
+        const dur   = fmt(t.durationSec||0);
+        const audio = esc(t.audioUrl||'');
+        const isVid = t.isVideo;
+        return `<div class="mcard bg-card p-3 rounded-xl cursor-pointer" data-track data-title="${title}" data-artist="${artist}" data-cover="${cover}" data-duration="${t.durationSec||0}" data-audio="${audio}">
+          <div class="relative aspect-square mb-3 rounded-lg overflow-hidden bg-black">
+            <img src="${cover}" class="w-full h-full object-cover" alt="" />
+            ${isVid ? `<div class="absolute top-2 right-2 bg-blue-600 rounded px-1.5 py-0.5 text-[9px] font-bold uppercase">VIDEO</div>` : ''}
+            <button data-track-play class="pplay absolute bottom-1.5 right-1.5 w-9 h-9 rounded-full bg-spotify text-black flex items-center justify-center shadow-xl">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="m7.05 3.606 13.49 7.788a.7.7 0 0 1 0 1.212L7.05 20.394A.7.7 0 0 1 6 19.788V4.212a.7.7 0 0 1 1.05-.606z"/></svg>
+            </button>
+          </div>
+          <div class="font-semibold text-xs truncate">${title}</div>
+          <div class="text-subtext text-[11px]">${artist}</div>
+        </div>`;
+      }).join('');
+    } else {
+      recentEl.innerHTML = `<div class="text-subtext text-sm col-span-full">No uploads yet. <button onclick="switchTab('upload')" class="text-spotify hover:underline">Upload your first track →</button></div>`;
+    }
+
+    // My tracks (songs)
+    const myTracksEl = document.getElementById('my-tracks');
+    myTracksEl.innerHTML = songs.length ? songs.map(renderTrackRow).join('') : '<div class="text-subtext text-sm py-4">No songs uploaded yet.</div>';
+
+    // My videos
+    const myVideosEl = document.getElementById('my-videos');
+    myVideosEl.innerHTML = videos.length ? videos.map(renderVideoCard).join('') : '<div class="text-subtext text-sm py-4 col-span-full">No videos uploaded yet.</div>';
+
+    // Liked
+    const likedEl = document.getElementById('liked-tracks');
+    likedEl.innerHTML = liked.length ? liked.map(renderTrackRow).join('') : '<div class="text-subtext text-sm py-4">No liked songs yet.</div>';
+
+    // Sidebar
+    const sidebarEl = document.getElementById('sidebar-my-uploads');
+    sidebarEl.innerHTML = mine.slice(0,8).map(t => {
+      const cover = esc(t.coverUrl||'assets/img/cover-3.svg');
+      const title = esc(t.title||'Untitled');
+      return `<div class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-white/5 cursor-pointer transition">
+        <img src="${cover}" class="w-7 h-7 rounded shrink-0 object-cover" /><span class="truncate text-xs text-subtext">${title}</span>
+      </div>`;
+    }).join('') || '<div class="text-subtext px-2 py-2 text-xs">No uploads yet</div>';
+
+  } catch(e) { console.error(e); }
+};
+
+// ── Video player modal ────────────────────────────────────────────────────────
+window.playVideo = (url, title, artist, cover) => {
+  // Open a simple modal overlay
+  const existing = document.getElementById('video-modal');
+  if (existing) existing.remove();
+  const modal = document.createElement('div');
+  modal.id = 'video-modal';
+  modal.className = 'fixed inset-0 z-[200] bg-black/90 flex items-center justify-center p-4';
+  modal.innerHTML = `
+    <div class="bg-card rounded-2xl overflow-hidden max-w-3xl w-full shadow-2xl">
+      <div class="relative">
+        <video src="${url}" class="w-full max-h-[60vh] bg-black" controls autoplay></video>
+      </div>
+      <div class="flex items-center gap-3 p-4">
+        <img src="${cover}" class="w-10 h-10 rounded shrink-0 object-cover" />
+        <div class="min-w-0"><div class="font-bold truncate">${title}</div><div class="text-subtext text-xs">${artist}</div></div>
+        <button onclick="document.getElementById('video-modal').remove()" class="ml-auto text-subtext hover:text-white p-2 rounded-full hover:bg-white/10 transition">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </div>
+    </div>`;
+  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+  document.body.appendChild(modal);
+};
+
+// ── Player bar (same as index.html) ─────────────────────────────────────────
+(() => {
+  const audio=document.getElementById('audio-el');
+  const cover=document.getElementById('player-cover');
+  const titleEl=document.getElementById('player-title');
+  const artistEl=document.getElementById('player-artist');
+  const eqEl=document.getElementById('player-eq');
+  const playSvg=document.getElementById('play-svg');
+  const btnPlay=document.getElementById('btn-play');
+  const progBar=document.getElementById('prog-bar');
+  const progFill=document.getElementById('prog-fill');
+  const progTime=document.getElementById('prog-time');
+  const progDur=document.getElementById('prog-dur');
+  const volSlider=document.getElementById('vol-slider');
+  const PLAY=`<path d="m7.05 3.606 13.49 7.788a.7.7 0 0 1 0 1.212L7.05 20.394A.7.7 0 0 1 6 19.788V4.212a.7.7 0 0 1 1.05-.606z"/>`;
+  const PAUSE=`<path d="M5.7 3a.7.7 0 0 0-.7.7v16.6a.7.7 0 0 0 .7.7h2.6a.7.7 0 0 0 .7-.7V3.7a.7.7 0 0 0-.7-.7H5.7zm10 0a.7.7 0 0 0-.7.7v16.6a.7.7 0 0 0 .7.7h2.6a.7.7 0 0 0 .7-.7V3.7a.7.7 0 0 0-.7-.7h-2.6z"/>`;
+
+  let queue=[],idx=-1,isPlaying=false,simTimer=null,simStart=0,simOffset=0,currentTrack=null;
+
+  const setUI=()=>{ playSvg.innerHTML=isPlaying?PAUSE:PLAY; eqEl.style.display=isPlaying?'flex':'none'; };
+  const updateProg=()=>{
+    const d=audio.duration||currentTrack?.duration||0, c=audio.currentTime||0, p=d?(c/d)*100:0;
+    progFill.style.width=p+'%'; progBar.style.setProperty('--pct',p+'%');
+    progTime.textContent=fmt(c); progDur.textContent=fmt(d);
+  };
+  const getT=el=>({ title:el.dataset.title||'Untitled', artist:el.dataset.artist||'', cover:el.dataset.cover||'assets/img/cover-3.svg', duration:+el.dataset.duration||0, audio:el.dataset.audio||'' });
+  const buildQ=()=>{ queue=[...document.querySelectorAll('[data-track]')]; };
+
+  const simPlay=()=>{
+    isPlaying=true; simStart=Date.now(); setUI();
+    clearInterval(simTimer);
+    const d=currentTrack?.duration||180;
+    simTimer=setInterval(()=>{
+      const el=(Date.now()-simStart)/1000+simOffset;
+      const p=Math.min(100,(el/d)*100);
+      progFill.style.width=p+'%'; progBar.style.setProperty('--pct',p+'%');
+      progTime.textContent=fmt(el); progDur.textContent=fmt(d);
+      if(el>=d){clearInterval(simTimer); isPlaying=false; setUI();}
+    },300);
+  };
+
+  const playIdx=(i)=>{
+    if(i<0||i>=queue.length)return;
+    idx=i; currentTrack=getT(queue[i]);
+    cover.src=currentTrack.cover; titleEl.textContent=currentTrack.title; artistEl.textContent=currentTrack.artist;
+    simOffset=0; clearInterval(simTimer);
+    audio.pause();
+    if(currentTrack.audio){ audio.src=currentTrack.audio; audio.play().then(()=>{isPlaying=true;setUI();}).catch(()=>simPlay()); }
+    else simPlay();
+  };
+
+  btnPlay.addEventListener('click',()=>{ if(idx<0){buildQ();playIdx(0);return;} if(isPlaying){audio.pause();clearInterval(simTimer);simOffset+=(Date.now()-simStart)/1000;isPlaying=false;setUI();}else{if(currentTrack?.audio){audio.play().then(()=>{isPlaying=true;setUI();});}else{simStart=Date.now();simPlay();}} });
+  audio.addEventListener('timeupdate',updateProg);
+  audio.addEventListener('ended',()=>{isPlaying=false;setUI();let n=idx+1;if(n<queue.length)playIdx(n);});
+  document.addEventListener('click',e=>{
+    const btn=e.target.closest('[data-track-play]'); if(!btn)return; e.preventDefault();
+    const el=btn.closest('[data-track]'); if(!el)return; buildQ(); playIdx(queue.indexOf(el));
+  });
+  volSlider.addEventListener('input',()=>{ audio.volume=volSlider.value/100; });
+  audio.volume=0.8;
+  progBar.addEventListener('click',e=>{ const r=progBar.getBoundingClientRect(),p=(e.clientX-r.left)/r.width; if(audio.duration)audio.currentTime=audio.duration*p; });
+})();
+
+// ── Nav highlight ────────────────────────────────────────────────────────────
+const cur = location.pathname.split('/').pop()||'library.html';
+document.querySelectorAll('[data-nav-link]').forEach(a=>{
+  const f=(a.getAttribute('href')||'').split('/').pop();
+  if(f===cur)a.classList.add('nav-active');
+});
+document.querySelectorAll('[data-action="back"]').forEach(b=>b.addEventListener('click',()=>history.back()));
+
+// ── Boot ─────────────────────────────────────────────────────────────────────
+initAuth();
+</script>
+</body>
+</html>

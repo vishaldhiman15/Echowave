@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EchoWave — Video Feed</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@300..900&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            spotify:"#1DB954","spotify-h":"#1ed760",
+            base:"#121212",highlight:"#1a1a1a",elevated:"#242424",card:"#181818",subtext:"#b3b3b3",
+          },
+          fontFamily: { sans: ['Figtree','sans-serif'] },
+        },
+      },
+    };
+  </script>
+  <style>
+    :root { --accent: #1DB954; }
+    * { box-sizing: border-box; }
+    body { font-family:'Figtree',sans-serif; }
+    ::-webkit-scrollbar { width:6px; }
+    ::-webkit-scrollbar-track { background:transparent; }
+    ::-webkit-scrollbar-thumb { background:#404040; border-radius:3px; }
+
+    /* Video cards */
+    .vid-card { transition:transform .25s, box-shadow .25s; cursor:pointer; }
+    .vid-card:hover { transform:translateY(-6px); box-shadow:0 20px 48px rgba(0,0,0,.7); }
+    .vid-thumb { position:relative; overflow:hidden; }
+    .vid-thumb img, .vid-thumb .thumb-bg { width:100%; aspect-ratio:16/9; object-fit:cover; }
+    .vid-thumb .thumb-bg { display:flex; align-items:center; justify-content:center; background:linear-gradient(135deg,#1a1a2e,#16213e); }
+    .play-overlay { position:absolute; inset:0; background:rgba(0,0,0,.3); display:flex; align-items:center; justify-content:center; opacity:0; transition:opacity .2s; }
+    .vid-card:hover .play-overlay { opacity:1; }
+    .play-circle { width:56px; height:56px; border-radius:50%; background:rgba(255,255,255,.92); display:flex; align-items:center; justify-content:center; box-shadow:0 4px 20px rgba(0,0,0,.4); }
+
+    /* Genre pills */
+    .pill { cursor:pointer; user-select:none; transition:background .15s, color .15s; }
+    .pill.active { background:var(--accent); color:#000; font-weight:700; }
+
+    /* Feature card */
+    .feature-card { position:relative; overflow:hidden; cursor:pointer; }
+    .feature-card::before { content:''; position:absolute; inset:0; background:linear-gradient(to top,rgba(0,0,0,.9) 40%,rgba(0,0,0,.1)); z-index:1; }
+    .feature-card:hover img { transform:scale(1.05); }
+    .feature-card img { transition:transform .5s ease; }
+    .feature-card .fc-content { position:absolute; bottom:0; left:0; right:0; z-index:2; padding:1.5rem; }
+
+    /* Video modal */
+    #vid-modal { display:none; }
+    #vid-modal.open { display:flex; }
+    @keyframes fadeIn { from{opacity:0;transform:scale(.95)} to{opacity:1;transform:scale(1)} }
+    #vid-modal.open .modal-inner { animation:fadeIn .2s ease; }
+
+    /* Skeleton */
+    @keyframes shimmer { 0%{background-position:-200%} 100%{background-position:200%} }
+    .skel { background:linear-gradient(90deg,#1a1a1a 25%,#242424 50%,#1a1a1a 75%); background-size:200%; animation:shimmer 1.4s infinite; border-radius:8px; }
+
+    /* Active nav */
+    .nav-active { color:#fff!important; }
+
+    /* Trending badge */
+    .trending-badge { background:linear-gradient(135deg,#f59e0b,#ef4444); }
+
+    /* Progress */
+    .prog-track { background:#555; border-radius:2px; cursor:pointer; position:relative; }
+    .prog-fill  { height:100%; background:#fff; border-radius:2px; }
+    .prog-track:hover .prog-fill { background:var(--accent); }
+    input[type=range].vol { -webkit-appearance:none; height:4px; background:#555; border-radius:2px; cursor:pointer; outline:none; }
+    input[type=range].vol::-webkit-slider-thumb { -webkit-appearance:none; width:12px; height:12px; background:#fff; border-radius:50%; opacity:0; }
+    .vol-wrap:hover input[type=range].vol::-webkit-slider-thumb { opacity:1; }
+  </style>
+</head>
+<body class="bg-black text-white h-screen flex flex-col overflow-hidden text-sm select-none">
+
+<div class="flex-1 flex overflow-hidden p-2 gap-2 min-h-0">
+
+  <!-- SIDEBAR -->
+  <aside class="w-[280px] shrink-0 flex-col gap-2 hidden md:flex">
+    <div class="bg-base rounded-xl p-5 flex flex-col gap-5">
+      <a href="index.html" class="flex items-center gap-2.5">
+        <svg viewBox="0 0 168 168" width="30" height="30" fill="#1DB954"><path d="M84 0C37.6 0 0 37.6 0 84s37.6 84 84 84 84-37.6 84-84S130.4 0 84 0zm38.5 121.1c-1.5 2.5-4.8 3.3-7.3 1.8C95.3 110.7 70.2 108 40.7 114.7c-2.8.7-5.7-1.1-6.3-4-.7-2.8 1.1-5.7 4-6.3 32.3-7.4 60.1-4.2 82.5 9.5 2.4 1.5 3.2 4.8 1.6 7.2zm10.3-22.9c-1.9 3.1-6 4.1-9.1 2.2C101.8 86.5 67 82.5 40 90.6c-3.5 1-7.2-.9-8.3-4.4-1-3.5.9-7.2 4.4-8.3 30.8-9.4 69.2-4.8 95.3 11.3 3.1 1.9 4.1 5.9 2.4 9zm.9-23.8C106.3 57.1 61.1 55.6 35 63.5c-4.2 1.3-8.6-1.1-9.9-5.3-1.3-4.2 1.1-8.6 5.3-9.9 30-9.1 79.9-7.3 111.4 11.4 3.8 2.2 5 7.1 2.8 10.9-2.2 3.7-7.1 5-10.8 2.7z"/></svg>
+        <span class="text-lg font-black tracking-tight">EchoWave</span>
+      </a>
+      <nav class="flex flex-col gap-0.5">
+        <a href="index.html" data-nav-link class="flex items-center gap-4 py-2 px-3 rounded-lg text-subtext hover:text-white font-semibold transition">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12.5 3.247a1 1 0 0 0-1 0L4 7.577V20h4.5v-6a1 1 0 0 1 1-1h5a1 1 0 0 1 1 1v6H20V7.577l-7.5-4.33zm-2-1.732a3 3 0 0 1 3 0l7.5 4.33a2 2 0 0 1 1 1.732V21a1 1 0 0 1-1 1h-6.5a1 1 0 0 1-1-1v-6h-3v6a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V7.577a2 2 0 0 1 1-1.732l7.5-4.33z"/></svg>
+          Home
+        </a>
+        <a href="search.html" data-nav-link class="flex items-center gap-4 py-2 px-3 rounded-lg text-subtext hover:text-white font-semibold transition">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M10.533 1.279C5.352 1.279 1.126 5.419 1.126 10.558c0 5.139 4.226 9.279 9.407 9.279 2.28 0 4.367-.872 5.948-2.323l4.41 4.733c.437.47 1.161.493 1.631.056.47-.437.494-1.161.057-1.631l-4.26-4.576c1.032-1.554 1.622-3.46 1.622-5.538 0-5.139-4.226-9.279-9.408-9.279zM3.126 10.558c0-4.006 3.301-7.279 7.407-7.279s7.407 3.273 7.407 7.279-3.301 7.279-7.407 7.279-7.407-3.273-7.407-7.279z"/></svg>
+          Search
+        </a>
+        <a href="library.html" data-nav-link class="flex items-center gap-4 py-2 px-3 rounded-lg text-subtext hover:text-white font-semibold transition">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M3 22a1 1 0 0 1-1-1V3a1 1 0 0 1 2 0v18a1 1 0 0 1-1 1zM15.5 2.134A1 1 0 0 0 14 3v18a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V6.464a1 1 0 0 0-.5-.866l-6-3.464zM9 2a1 1 0 0 0-1 1v18a1 1 0 1 0 2 0V3a1 1 0 0 0-1-1z"/></svg>
+          Your Library
+        </a>
+        <a href="videos.html" data-nav-link class="flex items-center gap-4 py-2 px-3 rounded-lg text-white font-semibold transition">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M10 15l5.19-3L10 9v6m11.56-7.83c.13.47.22 1.1.28 1.9.07.8.1 1.49.1 2.09L22 12c0 2.19-.16 3.8-.44 4.83-.25.9-.83 1.48-1.73 1.73-.47.13-1.33.22-2.65.28-1.3.07-2.49.1-3.59.1L12 19c-4.19 0-6.8-.16-7.83-.44-.9-.25-1.48-.83-1.73-1.73-.13-.47-.22-1.1-.28-1.9-.07-.8-.1-1.49-.1-2.09L2 12c0-2.19.16-3.8.44-4.83.25-.9.83-1.48 1.73-1.73.47-.13 1.33-.22 2.65-.28 1.3-.07 2.49-.1 3.59-.1L12 5c4.19 0 6.8.16 7.83.44.9.25 1.48.83 1.73 1.73z"/></svg>
+          Video Feed
+        </a>
+      </nav>
+    </div>
+
+    <!-- Trending sidebar -->
+    <div class="bg-base rounded-xl flex-1 overflow-hidden flex flex-col p-4 min-h-0">
+      <div class="text-xs font-bold uppercase tracking-widest text-subtext mb-3 flex items-center gap-2">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" class="text-orange-400"><path d="M13.5 2c0 0-7.5 9-7.5 14 0 4.14 3.36 7.5 7.5 7.5S21 20.14 21 16c0-5-7.5-14-7.5-14zm0 19c-2.76 0-5-2.24-5-5 0-1.53.72-3.01 1.5-4.2.78 1.19 1.5 2.67 1.5 4.2h1c0-1.87-.74-3.61-1.5-5 .76 1.39 2 2.73 2 5h1c0-2.27-1.24-3.61-2-5 .76 1.39 2 2.67 2 5h1c0-1.53.72-3.01 1.5-4.2.78 1.19 1.5 2.67 1.5 4.2 0 2.76-2.24 5-5 5z"/></svg>
+        Trending Now
+      </div>
+      <div id="sidebar-trending" class="overflow-y-auto flex-1 space-y-2">
+        <!-- Populated by JS -->
+        <div class="skel h-12 rounded-xl"></div>
+        <div class="skel h-12 rounded-xl"></div>
+        <div class="skel h-12 rounded-xl"></div>
+        <div class="skel h-12 rounded-xl"></div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="flex-1 rounded-xl flex flex-col overflow-hidden" style="background:#121212">
+
+    <!-- Header -->
+    <header class="h-16 flex items-center justify-between px-6 sticky top-0 z-20 bg-black/30 backdrop-blur-xl shrink-0">
+      <div class="flex items-center gap-3">
+        <button id="mob-toggle" class="md:hidden bg-black/50 rounded-full p-2 text-subtext hover:text-white">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M2 3.25A.75.75 0 0 1 2.75 2.5h10.5a.75.75 0 0 1 0 1.5H2.75A.75.75 0 0 1 2 3.25zM2 8a.75.75 0 0 1 .75-.75h10.5a.75.75 0 0 1 0 1.5H2.75A.75.75 0 0 1 2 8zm0 4.75a.75.75 0 0 1 .75-.75h10.5a.75.75 0 0 1 0 1.5H2.75a.75.75 0 0 1-.75-.75z"/></svg>
+        </button>
+        <div>
+          <h1 class="text-lg font-black">Video Feed</h1>
+          <p class="text-subtext text-xs -mt-0.5 hidden sm:block">Personalized for you</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-3" data-auth-actions>
+        <a href="library.html" class="flex items-center gap-2 text-sm font-bold text-subtext hover:text-white transition">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/></svg>
+          Upload Video
+        </a>
+        <a href="login.html" class="bg-white text-black py-2 px-5 rounded-full hover:scale-105 transition font-bold text-sm">Log in</a>
+      </div>
+    </header>
+
+    <!-- Genre filter pills -->
+    <div class="px-6 py-3 flex gap-2 overflow-x-auto shrink-0 hide-scrollbar" style="-ms-overflow-style:none;scrollbar-width:none;">
+      <button class="pill active bg-white/10 text-white rounded-full px-4 py-1.5 text-xs font-semibold whitespace-nowrap" data-genre="all">All</button>
+      <button class="pill bg-white/10 text-subtext rounded-full px-4 py-1.5 text-xs font-semibold whitespace-nowrap hover:bg-white/20 transition" data-genre="pop">Pop</button>
+      <button class="pill bg-white/10 text-subtext rounded-full px-4 py-1.5 text-xs font-semibold whitespace-nowrap hover:bg-white/20 transition" data-genre="hiphop">Hip-Hop</button>
+      <button class="pill bg-white/10 text-subtext rounded-full px-4 py-1.5 text-xs font-semibold whitespace-nowrap hover:bg-white/20 transition" data-genre="rock">Rock</button>
+      <button class="pill bg-white/10 text-subtext rounded-full px-4 py-1.5 text-xs font-semibold whitespace-nowrap hover:bg-white/20 transition" data-genre="electronic">Electronic</button>
+      <button class="pill bg-white/10 text-subtext rounded-full px-4 py-1.5 text-xs font-semibold whitespace-nowrap hover:bg-white/20 transition" data-genre="bollywood">Bollywood</button>
+      <button class="pill bg-white/10 text-subtext rounded-full px-4 py-1.5 text-xs font-semibold whitespace-nowrap hover:bg-white/20 transition" data-genre="rnb">R&B</button>
+      <button class="pill bg-white/10 text-subtext rounded-full px-4 py-1.5 text-xs font-semibold whitespace-nowrap hover:bg-white/20 transition" data-genre="indie">Indie</button>
+      <button class="pill bg-white/10 text-subtext rounded-full px-4 py-1.5 text-xs font-semibold whitespace-nowrap hover:bg-white/20 transition" data-genre="uploaded">My Uploads</button>
+    </div>
+
+    <!-- Feed content -->
+    <div class="flex-1 overflow-y-auto px-6 pb-6" id="feed-body">
+
+      <!-- Feature Hero (top video) -->
+      <div id="hero-section" class="mb-8">
+        <div class="feature-card rounded-2xl overflow-hidden" style="height:300px" id="hero-card" onclick="openVideo(featuredVideos[0])">
+          <img id="hero-img" src="assets/img/cover-1.svg" class="w-full h-full object-cover" alt="" />
+          <div class="fc-content">
+            <span class="inline-flex items-center gap-1 bg-red-600 text-white text-[10px] font-bold uppercase px-2 py-0.5 rounded mb-2">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="8"/></svg> Live Premiere
+            </span>
+            <h2 id="hero-title" class="text-2xl font-black mb-1">Featured Video</h2>
+            <p id="hero-artist" class="text-subtext text-sm">Artist</p>
+            <div class="flex items-center gap-3 mt-3">
+              <button onclick="event.stopPropagation();openVideo(featuredVideos[0])" class="flex items-center gap-2 bg-white text-black font-bold py-2 px-6 rounded-full text-sm hover:scale-105 transition">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="m7.05 3.606 13.49 7.788a.7.7 0 0 1 0 1.212L7.05 20.394A.7.7 0 0 1 6 19.788V4.212a.7.7 0 0 1 1.05-.606z"/></svg>
+                Watch Now
+              </button>
+              <button class="flex items-center gap-2 bg-white/20 text-white font-bold py-2 px-5 rounded-full text-sm hover:bg-white/30 transition">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Trending section -->
+      <section class="mb-10">
+        <div class="flex items-center gap-2 mb-4">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" class="text-orange-400"><path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z"/></svg>
+          <h2 class="text-xl font-black">Trending Music Videos</h2>
+        </div>
+        <div id="trending-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <!-- Skeleton placeholders -->
+          <div class="skel h-40 rounded-xl"></div><div class="skel h-40 rounded-xl"></div>
+          <div class="skel h-40 rounded-xl hidden sm:block"></div><div class="skel h-40 rounded-xl hidden lg:block"></div>
+        </div>
+      </section>
+
+      <!-- Recommended for you -->
+      <section class="mb-10">
+        <div class="flex items-center gap-2 mb-4">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" class="text-spotify"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
+          <h2 class="text-xl font-black">Recommended For You</h2>
+          <span class="text-xs text-subtext font-semibold ml-1 bg-white/5 px-2 py-0.5 rounded-full">Algorithm</span>
+        </div>
+        <div id="recommended-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div class="skel h-40 rounded-xl"></div><div class="skel h-40 rounded-xl"></div>
+          <div class="skel h-40 rounded-xl hidden sm:block"></div><div class="skel h-40 rounded-xl hidden lg:block"></div>
+        </div>
+      </section>
+
+      <!-- New Releases -->
+      <section class="mb-10">
+        <div class="flex items-center gap-2 mb-4">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" class="text-blue-400"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-8 2.5c1.84 0 3.35 1.51 3.35 3.35S13.84 13.2 12 13.2c-1.84 0-3.35-1.51-3.35-3.35S10.16 6.5 12 6.5zM20 18H4v-.57c0-2 4-3.08 8-3.08s8 1.08 8 3.08V18z"/></svg>
+          <h2 class="text-xl font-black">New Releases</h2>
+        </div>
+        <div id="new-releases-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div class="skel h-40 rounded-xl"></div><div class="skel h-40 rounded-xl"></div>
+          <div class="skel h-40 rounded-xl hidden sm:block"></div><div class="skel h-40 rounded-xl hidden lg:block"></div>
+        </div>
+      </section>
+
+      <!-- User Uploads section -->
+      <section id="user-uploads-section" class="mb-10">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center gap-2">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" class="text-purple-400"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+            <h2 class="text-xl font-black">Community Uploads</h2>
+          </div>
+          <a href="library.html" class="text-subtext text-sm font-bold hover:text-white transition hover:underline">Upload yours →</a>
+        </div>
+        <div id="user-uploads-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div class="text-subtext text-sm py-6 col-span-full">
+            Be the first to upload a video! <a href="library.html" class="text-spotify hover:underline">Upload now →</a>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+</div>
+
+<!-- Player bar -->
+<div id="player-bar" class="h-[90px] bg-[#181818] border-t border-white/10 flex items-center px-4 gap-3 shrink-0 z-50">
+  <div class="flex items-center gap-3 w-[30%] min-w-0">
+    <img id="player-cover" class="w-14 h-14 rounded object-cover shadow-md" src="assets/img/cover-3.svg" alt="" />
+    <div class="min-w-0 flex-1">
+      <div id="player-title" class="font-semibold text-sm truncate">Select a video</div>
+      <div id="player-artist" class="text-subtext text-xs truncate">—</div>
+    </div>
+  </div>
+  <div class="flex-1 max-w-[45%] flex flex-col items-center gap-2">
+    <div class="flex items-center gap-5">
+      <button id="btn-play" class="w-10 h-10 rounded-full bg-white text-black flex items-center justify-center hover:scale-105 transition">
+        <svg id="play-svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="m7.05 3.606 13.49 7.788a.7.7 0 0 1 0 1.212L7.05 20.394A.7.7 0 0 1 6 19.788V4.212a.7.7 0 0 1 1.05-.606z"/></svg>
+      </button>
+    </div>
+  </div>
+  <div class="flex items-center justify-end gap-3 w-[25%]">
+    <div class="vol-wrap flex items-center gap-1.5">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" class="text-subtext shrink-0"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg>
+      <input id="vol-slider" type="range" min="0" max="100" value="80" class="vol w-20" />
+    </div>
+  </div>
+</div>
+
+<div data-preview-banner class="bg-gradient-to-r from-[#af2896] to-[#509bf5] flex justify-between items-center px-4 sm:px-8 py-2.5 z-50 shrink-0">
+  <p class="font-semibold text-sm">Upload your music videos and get discovered.</p>
+  <a href="library.html" class="bg-white text-black font-bold py-2 px-6 rounded-full hover:scale-105 transition text-sm shrink-0 whitespace-nowrap ml-4">Upload now</a>
+</div>
+
+<!-- Video Modal -->
+<div id="vid-modal" class="fixed inset-0 z-[300] bg-black/95 items-center justify-center p-4">
+  <div class="modal-inner bg-card rounded-2xl overflow-hidden max-w-4xl w-full shadow-2xl relative">
+    <video id="modal-video" class="w-full bg-black max-h-[65vh]" controls></video>
+    <div class="p-4 flex items-start gap-4">
+      <img id="modal-thumb" class="w-14 h-14 rounded-lg object-cover shrink-0" src="" alt="" />
+      <div class="flex-1 min-w-0">
+        <h3 id="modal-title" class="font-black text-lg truncate"></h3>
+        <p id="modal-artist" class="text-subtext text-sm"></p>
+        <div class="flex items-center gap-2 mt-2">
+          <button id="modal-like" class="flex items-center gap-1.5 text-xs font-bold text-subtext hover:text-white transition">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+            Like
+          </button>
+          <button class="flex items-center gap-1.5 text-xs font-bold text-subtext hover:text-white transition">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92-1.31-2.92-2.92-2.92z"/></svg>
+            Share
+          </button>
+        </div>
+      </div>
+      <button id="modal-close" class="text-subtext hover:text-white p-2 rounded-full hover:bg-white/10 transition shrink-0">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+      </button>
+    </div>
+
+    <!-- Autoplay next -->
+    <div id="modal-up-next" class="border-t border-white/10 p-4">
+      <div class="text-xs font-bold text-subtext uppercase tracking-wider mb-3">Up Next</div>
+      <div id="modal-up-next-list" class="flex gap-3 overflow-x-auto pb-1"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+// ── Demo video data (algorithm-curated mock) ──────────────────────────────────
+// In production, these would come from the /api/tracks?isVideo=true endpoint
+const DEMO_VIDEOS = [
+  { id:'v1', title:'Kesariya (Official Video)', artist:'Arijit Singh', genre:'bollywood', cover:'assets/img/cover-1.svg', url:'', views:'245M', duration:'4:28', trending:true },
+  { id:'v2', title:'Blinding Lights', artist:'The Weeknd', genre:'pop', cover:'assets/img/cover-2.svg', url:'', views:'1.2B', duration:'3:20', trending:true },
+  { id:'v3', title:'HUMBLE.', artist:'Kendrick Lamar', genre:'hiphop', cover:'assets/img/cover-3.svg', url:'', views:'890M', duration:'2:57', trending:true },
+  { id:'v4', title:'Bad Guy', artist:'Billie Eilish', genre:'pop', cover:'assets/img/cover-4.svg', url:'', views:'1.1B', duration:'3:14' },
+  { id:'v5', title:'Levitating', artist:'Dua Lipa', genre:'pop', cover:'assets/img/cover-5.svg', url:'', views:'667M', duration:'3:23' },
+  { id:'v6', title:'Industry Baby', artist:'Lil Nas X', genre:'hiphop', cover:'assets/img/cover-6.svg', url:'', views:'502M', duration:'3:32' },
+  { id:'v7', title:'As It Was', artist:'Harry Styles', genre:'indie', cover:'assets/img/cover-1.svg', url:'', views:'800M', duration:'2:37' },
+  { id:'v8', title:'Stay', artist:'The Kid LAROI, Justin Bieber', genre:'pop', cover:'assets/img/cover-2.svg', url:'', views:'720M', duration:'2:21' },
+  { id:'v9', title:'Easy On Me', artist:'Adele', genre:'pop', cover:'assets/img/cover-3.svg', url:'', views:'545M', duration:'3:44' },
+  { id:'v10', title:'Dynamite', artist:'BTS', genre:'pop', cover:'assets/img/cover-4.svg', url:'', views:'1.4B', duration:'3:19' },
+  { id:'v11', title:'Peaches', artist:'Justin Bieber', genre:'rnb', cover:'assets/img/cover-5.svg', url:'', views:'411M', duration:'3:18' },
+  { id:'v12', title:'Heat Waves', artist:'Glass Animals', genre:'indie', cover:'assets/img/cover-6.svg', url:'', views:'390M', duration:'3:59' },
+];
+
+let featuredVideos = [...DEMO_VIDEOS];
+let activeGenre = 'all';
+
+// ── Algorithm: score and sort ─────────────────────────────────────────────────
+const algorithmSort = (videos) => {
+  // Simulate engagement scores: trending gets +50, recency boost, genre match
+  return videos.map(v => ({
+    ...v,
+    score: (v.trending ? 50 : 0)
+      + Math.random() * 30              // freshness randomness
+      + (v.genre === lastPlayedGenre ? 20 : 0)  // genre affinity
+      + (parseInt((v.views||'0').replace(/[^0-9]/g,''))/1e8)  // popularity
+  })).sort((a,b) => b.score - a.score);
+};
+
+let lastPlayedGenre = 'pop'; // updated when user watches
+let watchHistory    = [];
+let userUploads     = [];
+
+// ── Render helpers ────────────────────────────────────────────────────────────
+const renderVidCard = (v, badge) => {
+  const cover = esc(v.cover||'assets/img/cover-3.svg');
+  const title = esc(v.title||'Untitled');
+  const artist= esc(v.artist||'');
+  return `<div class="vid-card bg-card rounded-xl overflow-hidden" onclick="openVideo(${JSON.stringify(v).replace(/"/g,'&quot;')})">
+    <div class="vid-thumb rounded-t-xl overflow-hidden">
+      <img src="${cover}" class="w-full aspect-video object-cover" alt="" />
+      ${badge ? `<div class="absolute top-2 left-2 ${badge.cls} text-[10px] font-bold uppercase px-2 py-0.5 rounded text-white">${badge.label}</div>` : ''}
+      <div class="play-overlay">
+        <div class="play-circle">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="#000"><path d="m7.05 3.606 13.49 7.788a.7.7 0 0 1 0 1.212L7.05 20.394A.7.7 0 0 1 6 19.788V4.212a.7.7 0 0 1 1.05-.606z"/></svg>
+        </div>
+      </div>
+      <div class="absolute bottom-2 right-2 bg-black/70 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">${esc(v.duration||'')}</div>
+    </div>
+    <div class="p-3">
+      <div class="font-bold text-sm truncate mb-0.5">${title}</div>
+      <div class="flex items-center justify-between">
+        <span class="text-subtext text-xs truncate">${artist}</span>
+        <span class="text-subtext text-[10px] ml-2 shrink-0">${esc(v.views||'')}</span>
+      </div>
+    </div>
+  </div>`;
+};
+
+// Wrap with relative for absolute positioning inside
+const wrapCard = (html) => html.replace('<div class="vid-card', '<div class="vid-card relative');
+
+// ── Populate sections ─────────────────────────────────────────────────────────
+const populate = (genreFilter) => {
+  const all = genreFilter === 'all'
+    ? [...DEMO_VIDEOS, ...userUploads]
+    : [...DEMO_VIDEOS, ...userUploads].filter(v => {
+        const g = (v.genre||'').toLowerCase();
+        return g === genreFilter || g.includes(genreFilter);
+      });
+
+  const sorted = algorithmSort(all);
+  const trending = sorted.filter(v => v.trending).slice(0, 8);
+  const recommended = algorithmSort([...sorted]).slice(0, 8); // re-sort for variety
+  const newRel = [...sorted].reverse().slice(0, 8);
+
+  // Hero
+  const hero = sorted[0] || DEMO_VIDEOS[0];
+  const heroImg = document.getElementById('hero-img');
+  const heroTitle = document.getElementById('hero-title');
+  const heroArtist = document.getElementById('hero-artist');
+  const heroCard = document.getElementById('hero-card');
+  if (heroImg) heroImg.src = hero.cover || 'assets/img/cover-1.svg';
+  if (heroTitle) heroTitle.textContent = hero.title || '';
+  if (heroArtist) heroArtist.textContent = hero.artist || '';
+  if (heroCard) { heroCard.onclick = () => openVideo(hero); featuredVideos[0] = hero; }
+
+  // Trending
+  const tGrid = document.getElementById('trending-grid');
+  tGrid.innerHTML = trending.length
+    ? trending.map(v => wrapCard(renderVidCard(v, v.trending ? {cls:'trending-badge', label:'🔥 Trending'} : null))).join('')
+    : '<div class="text-subtext text-sm col-span-full py-4">No trending videos in this category.</div>';
+
+  // Recommended
+  const rGrid = document.getElementById('recommended-grid');
+  rGrid.innerHTML = recommended.slice(1).length
+    ? recommended.slice(1, 9).map(v => wrapCard(renderVidCard(v, null))).join('')
+    : '<div class="text-subtext text-sm col-span-full py-4">Recommendations coming soon.</div>';
+
+  // New releases
+  const nGrid = document.getElementById('new-releases-grid');
+  nGrid.innerHTML = newRel.length
+    ? newRel.map(v => wrapCard(renderVidCard(v, {cls:'bg-blue-600', label:'NEW'}))).join('')
+    : '<div class="text-subtext text-sm col-span-full py-4">No new releases yet.</div>';
+
+  // Sidebar trending
+  const sideBar = document.getElementById('sidebar-trending');
+  sideBar.innerHTML = trending.slice(0, 6).map((v, i) => `
+    <div class="flex items-center gap-2 p-2 rounded-lg hover:bg-white/5 cursor-pointer transition" onclick="openVideo(${JSON.stringify(v).replace(/"/g,'&quot;')})">
+      <span class="text-subtext text-xs w-5 text-right font-bold shrink-0">${i+1}</span>
+      <img src="${esc(v.cover||'assets/img/cover-3.svg')}" class="w-8 h-8 rounded shrink-0 object-cover" />
+      <div class="min-w-0">
+        <div class="font-semibold text-xs truncate">${esc(v.title||'')}</div>
+        <div class="text-subtext text-[10px] truncate">${esc(v.artist||'')}</div>
+      </div>
+    </div>`).join('');
+
+  // User uploads
+  const uGrid = document.getElementById('user-uploads-grid');
+  if (userUploads.length) {
+    uGrid.innerHTML = userUploads.map(v => wrapCard(renderVidCard(v, {cls:'bg-purple-600', label:'Your Upload'}))).join('');
+  } else {
+    uGrid.innerHTML = `<div class="text-subtext text-sm py-4 col-span-full">Be the first to upload! <a href="library.html" class="text-spotify hover:underline">Upload now →</a></div>`;
+  }
+};
+
+// ── Genre pills ───────────────────────────────────────────────────────────────
+document.querySelectorAll('.pill').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.pill').forEach(b => { b.classList.remove('active','bg-spotify','text-black','font-bold'); b.classList.add('bg-white/10','text-subtext'); });
+    btn.classList.add('active','bg-spotify','text-black','font-bold'); btn.classList.remove('bg-white/10','text-subtext');
+    activeGenre = btn.dataset.genre;
+    populate(activeGenre);
+  });
+});
+
+// ── Video modal ───────────────────────────────────────────────────────────────
+const modal      = document.getElementById('vid-modal');
+const modalVideo = document.getElementById('modal-video');
+const modalThumb = document.getElementById('modal-thumb');
+const modalTitle = document.getElementById('modal-title');
+const modalArtist= document.getElementById('modal-artist');
+const upNextList = document.getElementById('modal-up-next-list');
+
+window.openVideo = (v) => {
+  if (!v) return;
+  lastPlayedGenre = v.genre || lastPlayedGenre;
+  watchHistory.unshift(v.id);
+
+  modalVideo.src = v.url || '';
+  modalThumb.src = v.cover || 'assets/img/cover-3.svg';
+  modalTitle.textContent  = v.title  || 'Untitled';
+  modalArtist.textContent = v.artist || '';
+
+  // Up next: algorithm picks similar genre, exclude current
+  const upNext = algorithmSort([...DEMO_VIDEOS, ...userUploads].filter(x => x.id !== v.id)).slice(0, 5);
+  upNextList.innerHTML = upNext.map(u => `
+    <div class="flex-shrink-0 w-36 cursor-pointer" onclick="openVideo(${JSON.stringify(u).replace(/"/g,'&quot;')})">
+      <div class="relative rounded-lg overflow-hidden mb-1.5">
+        <img src="${esc(u.cover||'')}" class="w-full aspect-video object-cover" />
+        <div class="play-overlay absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition">
+          <div class="w-8 h-8 rounded-full bg-white/90 flex items-center justify-center">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="#000"><path d="m7.05 3.606 13.49 7.788a.7.7 0 0 1 0 1.212L7.05 20.394A.7.7 0 0 1 6 19.788V4.212a.7.7 0 0 1 1.05-.606z"/></svg>
+          </div>
+        </div>
+      </div>
+      <div class="font-semibold text-xs truncate">${esc(u.title||'')}</div>
+      <div class="text-subtext text-[10px]">${esc(u.artist||'')}</div>
+    </div>`).join('');
+
+  modal.classList.add('open');
+  if (v.url) { modalVideo.load(); modalVideo.play().catch(()=>{}); }
+
+  // Update player bar
+  document.getElementById('player-title').textContent  = v.title  || 'Untitled';
+  document.getElementById('player-artist').textContent = v.artist || '';
+  document.getElementById('player-cover').src = v.cover || 'assets/img/cover-3.svg';
+};
+
+document.getElementById('modal-close').addEventListener('click', () => {
+  modal.classList.remove('open'); modalVideo.pause();
+});
+modal.addEventListener('click', e => { if (e.target === modal) { modal.classList.remove('open'); modalVideo.pause(); } });
+
+// ── Load real uploaded videos from API ────────────────────────────────────────
+const loadUserVideos = async () => {
+  try {
+    const TOKEN_KEY = 'echowave_token';
+    const tok = (() => { try { return localStorage.getItem(TOKEN_KEY); } catch { return null; } })();
+    const h = tok ? { Authorization: 'Bearer '+tok } : {};
+    const res = await fetch('/api/tracks', { headers: h });
+    if (!res.ok) return;
+    const data = await res.json();
+    const videos = (data?.items || []).filter(t => t.isVideo || (t.audioUrl && /\.(mp4|webm|mov|avi)/i.test(t.audioUrl)));
+    userUploads = videos.map(t => ({
+      id: t._id,
+      title: t.title,
+      artist: t.artist?.name || '',
+      cover: t.coverUrl || t.album?.coverUrl || 'assets/img/cover-3.svg',
+      url: t.audioUrl || '',
+      genre: t.genre || '',
+      views: t.plays ? t.plays+'+ plays' : 'Just uploaded',
+      duration: t.durationSec ? Math.floor(t.durationSec/60)+':'+(t.durationSec%60).toString().padStart(2,'0') : '',
+      isUserUpload: true,
+    }));
+    populate(activeGenre);
+  } catch(e) { /* silently keep demo data */ }
+};
+
+// ── Nav highlight ─────────────────────────────────────────────────────────────
+const cur = location.pathname.split('/').pop() || 'videos.html';
+document.querySelectorAll('[data-nav-link]').forEach(a => {
+  if ((a.getAttribute('href')||'').split('/').pop() === cur) a.classList.add('nav-active');
+});
+
+// ── Init ─────────────────────────────────────────────────────────────────────
+populate('all');
+loadUserVideos();
+</script>
+</body>
+</html>

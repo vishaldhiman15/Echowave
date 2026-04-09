@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EchoWave — Web Player</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Figtree:ital,wght@0,300..900;1,300..900&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            spotify: "#1DB954",
+            "spotify-h": "#1ed760",
+            base: "#121212",
+            highlight: "#1a1a1a",
+            elevated: "#242424",
+            card: "#181818",
+            subtext: "#b3b3b3",
+          },
+          fontFamily: { sans: ['Figtree', 'sans-serif'] },
+        },
+      },
+    };
+  </script>
+  <style>
+    :root { --accent: #1DB954; }
+    * { box-sizing: border-box; }
+    body { font-family: 'Figtree', sans-serif; }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #404040; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #636363; }
+
+    /* Equalizer */
+    .eq-bar { display: inline-block; width: 3px; background: var(--accent); border-radius: 1px; animation: eqb .7s ease-in-out infinite alternate; }
+    .eq-bar:nth-child(1){ animation-duration:.5s; }
+    .eq-bar:nth-child(2){ animation-delay:.15s; animation-duration:.8s; }
+    .eq-bar:nth-child(3){ animation-delay:.3s; animation-duration:.6s; }
+    @keyframes eqb { from{height:4px} to{height:14px} }
+
+    /* Progress */
+    .prog-track { background:#555; border-radius:2px; cursor:pointer; position:relative; overflow:visible; }
+    .prog-fill  { height:100%; background:#fff; border-radius:2px; pointer-events:none; transition:background .1s; }
+    .prog-track:hover .prog-fill { background: var(--accent); }
+    .prog-thumb { position:absolute; top:50%; width:12px; height:12px; background:#fff; border-radius:50%; transform:translate(-50%,-50%); left:var(--pct,0%); opacity:0; transition:opacity .15s; pointer-events:none; }
+    .prog-track:hover .prog-thumb { opacity:1; }
+
+    /* Volume */
+    input[type=range].vol { -webkit-appearance:none; appearance:none; height:4px; background:#555; border-radius:2px; cursor:pointer; outline:none; }
+    input[type=range].vol::-webkit-slider-thumb { -webkit-appearance:none; width:12px; height:12px; background:#fff; border-radius:50%; opacity:0; transition:opacity .15s; }
+    .vol-wrap:hover input[type=range].vol::-webkit-slider-thumb { opacity:1; }
+    input[type=range].vol::-webkit-slider-runnable-track { background:transparent; }
+
+    /* Music cards */
+    .mcard { transition:background .2s; }
+    .mcard:hover { background:#282828!important; }
+    .mcard .pplay { opacity:0; transform:translateY(8px); transition:opacity .2s,transform .2s; }
+    .mcard:hover .pplay { opacity:1; transform:translateY(0); }
+
+    /* Gradient bg transition */
+    #main-area { transition:background 1s ease; }
+
+    /* Like pop */
+    @keyframes lpop{0%,100%{transform:scale(1)}50%{transform:scale(1.35)}}
+    .liked-anim { animation:lpop .25s ease; }
+
+    /* Now playing row highlight */
+    .track-playing { color: var(--accent)!important; }
+
+    /* Active nav */
+    .nav-active { color:#fff!important; }
+  </style>
+</head>
+<body class="bg-black text-white h-screen flex flex-col overflow-hidden text-sm select-none">
+
+<!-- ═══════════ LAYOUT ═══════════ -->
+<div class="flex-1 flex overflow-hidden p-2 gap-2 min-h-0">
+
+  <!-- SIDEBAR -->
+  <aside class="w-[280px] shrink-0 flex-col gap-2 hidden md:flex">
+
+    <!-- Top nav box -->
+    <div class="bg-base rounded-xl p-5 flex flex-col gap-5">
+      <a href="index.html" class="flex items-center gap-2.5">
+        <svg viewBox="0 0 168 168" width="30" height="30" fill="#1DB954"><path d="M84 0C37.6 0 0 37.6 0 84s37.6 84 84 84 84-37.6 84-84S130.4 0 84 0zm38.5 121.1c-1.5 2.5-4.8 3.3-7.3 1.8C95.3 110.7 70.2 108 40.7 114.7c-2.8.7-5.7-1.1-6.3-4-.7-2.8 1.1-5.7 4-6.3 32.3-7.4 60.1-4.2 82.5 9.5 2.4 1.5 3.2 4.8 1.6 7.2zm10.3-22.9c-1.9 3.1-6 4.1-9.1 2.2C101.8 86.5 67 82.5 40 90.6c-3.5 1-7.2-.9-8.3-4.4-1-3.5.9-7.2 4.4-8.3 30.8-9.4 69.2-4.8 95.3 11.3 3.1 1.9 4.1 5.9 2.4 9zm.9-23.8C106.3 57.1 61.1 55.6 35 63.5c-4.2 1.3-8.6-1.1-9.9-5.3-1.3-4.2 1.1-8.6 5.3-9.9 30-9.1 79.9-7.3 111.4 11.4 3.8 2.2 5 7.1 2.8 10.9-2.2 3.7-7.1 5-10.8 2.7z"/></svg>
+        <span class="text-lg font-black tracking-tight">EchoWave</span>
+      </a>
+      <nav class="flex flex-col gap-0.5">
+        <a href="index.html" data-nav-link class="flex items-center gap-4 py-2 px-3 rounded-lg text-subtext hover:text-white font-semibold transition">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12.5 3.247a1 1 0 0 0-1 0L4 7.577V20h4.5v-6a1 1 0 0 1 1-1h5a1 1 0 0 1 1 1v6H20V7.577l-7.5-4.33zm-2-1.732a3 3 0 0 1 3 0l7.5 4.33a2 2 0 0 1 1 1.732V21a1 1 0 0 1-1 1h-6.5a1 1 0 0 1-1-1v-6h-3v6a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V7.577a2 2 0 0 1 1-1.732l7.5-4.33z"/></svg>
+          Home
+        </a>
+        <a href="search.html" data-nav-link class="flex items-center gap-4 py-2 px-3 rounded-lg text-subtext hover:text-white font-semibold transition">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M10.533 1.279C5.352 1.279 1.126 5.419 1.126 10.558c0 5.139 4.226 9.279 9.407 9.279 2.28 0 4.367-.872 5.948-2.323l4.41 4.733c.437.47 1.161.493 1.631.056.47-.437.494-1.161.057-1.631l-4.26-4.576c1.032-1.554 1.622-3.46 1.622-5.538 0-5.139-4.226-9.279-9.408-9.279zM3.126 10.558c0-4.006 3.301-7.279 7.407-7.279s7.407 3.273 7.407 7.279-3.301 7.279-7.407 7.279-7.407-3.273-7.407-7.279z"/></svg>
+          Search
+        </a>
+      </nav>
+    </div>
+
+    <!-- Library box -->
+    <div class="bg-base rounded-xl flex-1 flex flex-col overflow-hidden min-h-0">
+      <div class="flex items-center justify-between px-5 pt-4 pb-2">
+        <a href="library.html" data-nav-link class="flex items-center gap-3 text-subtext hover:text-white font-semibold transition">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M3 22a1 1 0 0 1-1-1V3a1 1 0 0 1 2 0v18a1 1 0 0 1-1 1zM15.5 2.134A1 1 0 0 0 14 3v18a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V6.464a1 1 0 0 0-.5-.866l-6-3.464zM9 2a1 1 0 0 0-1 1v18a1 1 0 1 0 2 0V3a1 1 0 0 0-1-1z"/></svg>
+          Your Library
+        </a>
+        <button data-action="create-playlist" class="text-subtext hover:text-white rounded-full hover:bg-white/10 p-2 transition" title="Create playlist">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M15.25 8a.75.75 0 0 1-.75.75H8.75v5.75a.75.75 0 0 1-1.5 0V8.75H1.5a.75.75 0 0 1 0-1.5h5.75V1.5a.75.75 0 0 1 1.5 0v5.75h5.75a.75.75 0 0 1 .75.75z"/></svg>
+        </button>
+      </div>
+
+      <div class="overflow-y-auto flex-1 px-3 pb-4 space-y-0.5">
+        <a href="playlist.html" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/5 cursor-pointer transition group">
+          <div class="w-10 h-10 rounded bg-gradient-to-br from-purple-700 to-blue-400 flex items-center justify-center shrink-0">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
+          </div>
+          <div class="min-w-0">
+            <div class="font-semibold text-sm text-white truncate">Liked Songs</div>
+            <div class="text-[11px] text-subtext">Playlist</div>
+          </div>
+        </a>
+        
+        <div id="my-playlists-sidebar"></div>
+
+        <div class="bg-elevated rounded-xl p-4 mt-3 border border-white/5 shadow-xl">
+          <div class="font-bold text-sm mb-1">Create your first playlist</div>
+          <div class="text-xs text-subtext mb-3">It's easy, we'll help you</div>
+          <button data-action="create-playlist" class="bg-white text-black font-bold py-1.5 px-4 rounded-full text-xs hover:scale-105 hover:bg-gray-200 transition">Create playlist</button>
+        </div>
+      </div>
+
+      <div class="px-5 py-3 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-subtext border-t border-white/5">
+        <a href="#" class="hover:text-white transition">Legal</a>
+        <a href="#" class="hover:text-white transition">Privacy</a>
+        <a href="#" class="hover:text-white transition">Cookies</a>
+        <a href="#" class="hover:text-white transition">About Ads</a>
+        <a href="#" class="hover:text-white transition">Accessibility</a>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main id="main-area" class="flex-1 rounded-xl flex flex-col overflow-hidden relative shadow-[0_0_40px_rgba(30,58,47,0.3)]" style="background:linear-gradient(to bottom, rgba(30,58,47,0.8) 0%, #121212 50%)">
+
+    <!-- Header -->
+    <header class="h-16 flex items-center justify-between px-6 sticky top-0 z-20 bg-black/40 backdrop-blur-2xl shrink-0 border-b border-white/5">
+      <div class="flex items-center gap-2">
+        <button id="mob-toggle" class="md:hidden bg-black/50 rounded-full p-2 text-subtext hover:text-white transition">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M2 3.25A.75.75 0 0 1 2.75 2.5h10.5a.75.75 0 0 1 0 1.5H2.75A.75.75 0 0 1 2 3.25zM2 8a.75.75 0 0 1 .75-.75h10.5a.75.75 0 0 1 0 1.5H2.75A.75.75 0 0 1 2 8zm0 4.75a.75.75 0 0 1 .75-.75h10.5a.75.75 0 0 1 0 1.5H2.75a.75.75 0 0 1-.75-.75z"/></svg>
+        </button>
+        <button data-action="back" class="hidden md:flex bg-black/50 rounded-full p-2 text-white/60 hover:text-white transition">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M11.03.47a.75.75 0 0 1 0 1.06L4.56 8l6.47 6.47a.75.75 0 1 1-1.06 1.06L2.44 8 9.97.47a.75.75 0 0 1 1.06 0z"/></svg>
+        </button>
+        <button data-action="forward" class="hidden md:flex bg-black/50 rounded-full p-2 text-white/60 hover:text-white transition">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M4.97.47a.75.75 0 0 0 0 1.06L11.44 8l-6.47 6.47a.75.75 0 1 0 1.06 1.06L13.56 8 6.03.47a.75.75 0 0 0-1.06 0z"/></svg>
+        </button>
+      </div>
+      <div class="flex items-center gap-3 font-semibold" data-auth-actions>
+        <div class="hidden lg:flex items-center gap-5 text-subtext text-sm">
+          <a href="#" class="hover:text-white transition">Premium</a>
+          <a href="#" class="hover:text-white transition">Support</a>
+          <a href="#" class="hover:text-white transition">Download</a>
+          <div class="w-px h-5 bg-white/20"></div>
+        </div>
+        <a href="signup.html" class="text-subtext hover:text-white transition text-sm font-bold">Sign up</a>
+        <a href="login.html" class="bg-white text-black py-2 px-6 rounded-full hover:scale-105 transition font-bold text-sm">Log in</a>
+      </div>
+    </header>
+
+    <!-- Scroll body -->
+    <div class="flex-1 overflow-y-auto" id="scroll-body">
+      <div class="px-6 pb-10">
+
+        <!-- Greeting -->
+        <h1 id="greeting" class="text-3xl font-black mt-3 mb-7">Good evening</h1>
+
+        <!-- Quick Access Grid -->
+        <div class="grid grid-cols-2 lg:grid-cols-3 gap-2 mb-10">
+          <a href="playlist.html" class="flex items-center gap-3 bg-white/10 hover:bg-white/20 rounded overflow-hidden transition pr-3 h-[60px]">
+            <div class="w-[60px] h-[60px] bg-gradient-to-br from-purple-600 to-blue-500 flex items-center justify-center shrink-0">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="white"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
+            </div>
+            <span class="font-bold text-sm truncate">Liked Songs</span>
+          </a>
+          <a href="playlist.html" class="flex items-center gap-3 bg-white/10 hover:bg-white/20 rounded overflow-hidden transition pr-3 h-[60px]">
+            <div class="w-[60px] h-[60px] bg-gradient-to-br from-green-700 to-teal-400 flex items-center justify-center shrink-0">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="white"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
+            </div>
+            <span class="font-bold text-sm truncate">Daily Mix 1</span>
+          </a>
+          <a href="playlist.html" class="flex items-center gap-3 bg-white/10 hover:bg-white/20 rounded overflow-hidden transition pr-3 h-[60px]">
+            <div class="w-[60px] h-[60px] bg-gradient-to-br from-red-600 to-orange-400 flex items-center justify-center shrink-0">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="white"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
+            </div>
+            <span class="font-bold text-sm truncate">Top Hits India</span>
+          </a>
+          <a href="playlist.html" class="flex items-center gap-3 bg-white/10 hover:bg-white/20 rounded overflow-hidden transition pr-3 h-[60px]">
+            <div class="w-[60px] h-[60px] bg-gradient-to-br from-yellow-600 to-orange-400 flex items-center justify-center shrink-0">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="white"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
+            </div>
+            <span class="font-bold text-sm truncate">Chill Vibes</span>
+          </a>
+          <a href="playlist.html" class="flex items-center gap-3 bg-white/10 hover:bg-white/20 rounded overflow-hidden transition pr-3 h-[60px]">
+            <div class="w-[60px] h-[60px] bg-gradient-to-br from-pink-600 to-purple-500 flex items-center justify-center shrink-0">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="white"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
+            </div>
+            <span class="font-bold text-sm truncate">Bollywood Hits</span>
+          </a>
+          <a href="artist.html" class="flex items-center gap-3 bg-white/10 hover:bg-white/20 rounded overflow-hidden transition pr-3 h-[60px]">
+            <div class="w-[60px] h-[60px] bg-gradient-to-br from-blue-600 to-cyan-400 flex items-center justify-center shrink-0">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="white"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+            </div>
+            <span class="font-bold text-sm truncate">Top Artists</span>
+          </a>
+        </div>
+
+        <div id="home-dynamic-content">
+          <!-- Trending Songs -->
+          <section class="mb-10">
+            <div class="flex justify-between items-center mb-5">
+              <h2 class="text-2xl font-black hover:underline cursor-pointer">Trending songs</h2>
+              <a href="playlist.html" class="text-subtext font-bold text-sm hover:text-white transition hover:underline">Show all</a>
+            </div>
+            <div id="home-tracks-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
+            <!-- JS renders from API; fallback below if API unavailable -->
+            <div class="mcard bg-card p-4 rounded-xl cursor-pointer" data-track data-title="Jaiye Sajana" data-artist="Shashwat Sachdev" data-cover="assets/img/cover-1.svg" data-duration="200">
+              <div class="relative mb-4 aspect-square"><img src="assets/img/cover-1.svg" class="w-full h-full object-cover rounded-lg shadow-xl" alt=""/><button data-track-play class="pplay absolute bottom-2 right-2 w-12 h-12 rounded-full bg-spotify text-black flex items-center justify-center shadow-2xl hover:bg-spotify-h transition-all"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="m7.05 3.606 13.49 7.788a.7.7 0 0 1 0 1.212L7.05 20.394A.7.7 0 0 1 6 19.788V4.212a.7.7 0 0 1 1.05-.606z"/></svg></button></div>
+              <div class="font-bold truncate mb-1 text-sm">Jaiye Sajana</div><div class="text-subtext text-xs line-clamp-2">Shashwat Sachdev, Jasmine Sandlas</div>
+            </div>
+            <div class="mcard bg-card p-4 rounded-xl cursor-pointer" data-track data-title="Bairan" data-artist="Banjaare" data-cover="assets/img/cover-2.svg" data-duration="188">
+              <div class="relative mb-4 aspect-square"><img src="assets/img/cover-2.svg" class="w-full h-full object-cover rounded-lg shadow-xl" alt=""/><button data-track-play class="pplay absolute bottom-2 right-2 w-12 h-12 rounded-full bg-spotify text-black flex items-center justify-center shadow-2xl hover:bg-spotify-h transition-all"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="m7.05 3.606 13.49 7.788a.7.7 0 0 1 0 1.212L7.05 20.394A.7.7 0 0 1 6 19.788V4.212a.7.7 0 0 1 1.05-.606z"/></svg></button></div>
+              <div class="font-bold truncate mb-1 text-sm">Bairan</div><div class="text-subtext text-xs line-clamp-2">Banjaare</div>
+            </div>
+            <div class="mcard bg-card p-4 rounded-xl cursor-pointer" data-track data-title="Khat" data-artist="Navjot Ahuja" data-cover="assets/img/cover-3.svg" data-duration="192">
+              <div class="relative mb-4 aspect-square"><img src="assets/img/cover-3.svg" class="w-full h-full object-cover rounded-lg shadow-xl" alt=""/><button data-track-play class="pplay absolute bottom-2 right-2 w-12 h-12 rounded-full bg-spotify text-black flex items-center justify-center shadow-2xl hover:bg-spotify-h transition-all"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="m7.05 3.606 13.49 7.788a.7.7 0 0 1 0 1.212L7.05 20.394A.7.7 0 0 1 6 19.788V4.212a.7.7 0 0 1 1.05-.606z"/></svg></button></div>
+              <div class="font-bold truncate mb-1 text-sm">Khat</div><div class="text-subtext text-xs line-clamp-2">Navjot Ahuja</div>
+            </div>
+            <div class="mcard bg-card p-4 rounded-xl cursor-pointer" data-track data-title="Kitab" data-artist="Mr Dutt, Vipin Foji" data-cover="assets/img/cover-4.svg" data-duration="205">
+              <div class="relative mb-4 aspect-square"><img src="assets/img/cover-4.svg" class="w-full h-full object-cover rounded-lg shadow-xl" alt=""/><button data-track-play class="pplay absolute bottom-2 right-2 w-12 h-12 rounded-full bg-spotify text-black flex items-center justify-center shadow-2xl hover:bg-spotify-h transition-all"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="m7.05 3.606 13.49 7.788a.7.7 0 0 1 0 1.212L7.05 20.394A.7.7 0 0 1 6 19.788V4.212a.7.7 0 0 1 1.05-.606z"/></svg></button></div>
+              <div class="font-bold truncate mb-1 text-sm">Kitab</div><div class="text-subtext text-xs line-clamp-2">Mr Dutt, Vipin Foji</div>
+            </div>
+            <div class="mcard bg-card p-4 rounded-xl cursor-pointer" data-track data-title="Babydoll" data-artist="Dominic Fike" data-cover="assets/img/cover-5.svg" data-duration="185">
+              <div class="relative mb-4 aspect-square"><img src="assets/img/cover-5.svg" class="w-full h-full object-cover rounded-lg shadow-xl" alt=""/><button data-track-play class="pplay absolute bottom-2 right-2 w-12 h-12 rounded-full bg-spotify text-black flex items-center justify-center shadow-2xl hover:bg-spotify-h transition-all"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="m7.05 3.606 13.49 7.788a.7.7 0 0 1 0 1.212L7.05 20.394A.7.7 0 0 1 6 19.788V4.212a.7.7 0 0 1 1.05-.606z"/></svg></button></div>
+              <div class="font-bold truncate mb-1 text-sm">Babydoll</div><div class="text-subtext text-xs line-clamp-2">Dominic Fike</div>
+            </div>
+            <div class="mcard bg-card p-4 rounded-xl cursor-pointer" data-track data-title="Tere Vaaste" data-artist="Varun Jain" data-cover="assets/img/cover-6.svg" data-duration="220">
+              <div class="relative mb-4 aspect-square"><img src="assets/img/cover-6.svg" class="w-full h-full object-cover rounded-lg shadow-xl" alt=""/><button data-track-play class="pplay absolute bottom-2 right-2 w-12 h-12 rounded-full bg-spotify text-black flex items-center justify-center shadow-2xl hover:bg-spotify-h transition-all"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="m7.05 3.606 13.49 7.788a.7.7 0 0 1 0 1.212L7.05 20.394A.7.7 0 0 1 6 19.788V4.212a.7.7 0 0 1 1.05-.606z"/></svg></button></div>
+              <div class="font-bold truncate mb-1 text-sm">Tere Vaaste</div><div class="text-subtext text-xs line-clamp-2">Varun Jain, Sachin-Jigar</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Popular Artists -->
+        <section class="mb-10">
+          <div class="flex justify-between items-center mb-5">
+            <h2 class="text-2xl font-black hover:underline cursor-pointer">Popular artists</h2>
+            <a href="artist.html" class="text-subtext font-bold text-sm hover:text-white transition hover:underline">Show all</a>
+          </div>
+          <div id="home-artists-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
+            <div class="mcard bg-card p-4 rounded-xl cursor-pointer"><div class="relative mb-4 aspect-square"><img src="assets/img/avatar-1.svg" class="w-full h-full object-cover rounded-full shadow-xl" alt=""/><button class="pplay absolute bottom-2 right-2 w-12 h-12 rounded-full bg-spotify text-black flex items-center justify-center shadow-2xl hover:bg-spotify-h transition-all"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="m7.05 3.606 13.49 7.788a.7.7 0 0 1 0 1.212L7.05 20.394A.7.7 0 0 1 6 19.788V4.212a.7.7 0 0 1 1.05-.606z"/></svg></button></div><div class="font-bold mb-0.5 text-sm">Pritam</div><div class="text-subtext text-xs">Artist</div></div>
+            <div class="mcard bg-card p-4 rounded-xl cursor-pointer"><div class="relative mb-4 aspect-square"><img src="assets/img/cover-6.svg" class="w-full h-full object-cover rounded-full shadow-xl" alt=""/><button class="pplay absolute bottom-2 right-2 w-12 h-12 rounded-full bg-spotify text-black flex items-center justify-center shadow-2xl hover:bg-spotify-h transition-all"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="m7.05 3.606 13.49 7.788a.7.7 0 0 1 0 1.212L7.05 20.394A.7.7 0 0 1 6 19.788V4.212a.7.7 0 0 1 1.05-.606z"/></svg></button></div><div class="font-bold mb-0.5 text-sm">A.R. Rahman</div><div class="text-subtext text-xs">Artist</div></div>
+            <div class="mcard bg-card p-4 rounded-xl cursor-pointer"><div class="relative mb-4 aspect-square"><img src="assets/img/cover-4.svg" class="w-full h-full object-cover rounded-full shadow-xl" alt=""/><button class="pplay absolute bottom-2 right-2 w-12 h-12 rounded-full bg-spotify text-black flex items-center justify-center shadow-2xl hover:bg-spotify-h transition-all"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="m7.05 3.606 13.49 7.788a.7.7 0 0 1 0 1.212L7.05 20.394A.7.7 0 0 1 6 19.788V4.212a.7.7 0 0 1 1.05-.606z"/></svg></button></div><div class="font-bold mb-0.5 text-sm">Arijit Singh</div><div class="text-subtext text-xs">Artist</div></div>
+            <div class="mcard bg-card p-4 rounded-xl cursor-pointer"><div class="relative mb-4 aspect-square"><img src="assets/img/cover-5.svg" class="w-full h-full object-cover rounded-full shadow-xl" alt=""/><button class="pplay absolute bottom-2 right-2 w-12 h-12 rounded-full bg-spotify text-black flex items-center justify-center shadow-2xl hover:bg-spotify-h transition-all"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="m7.05 3.606 13.49 7.788a.7.7 0 0 1 0 1.212L7.05 20.394A.7.7 0 0 1 6 19.788V4.212a.7.7 0 0 1 1.05-.606z"/></svg></button></div><div class="font-bold mb-0.5 text-sm">Sachin-Jigar</div><div class="text-subtext text-xs">Artist</div></div>
+            <div class="mcard bg-card p-4 rounded-xl cursor-pointer"><div class="relative mb-4 aspect-square"><img src="assets/img/cover-3.svg" class="w-full h-full object-cover rounded-full shadow-xl" alt=""/><button class="pplay absolute bottom-2 right-2 w-12 h-12 rounded-full bg-spotify text-black flex items-center justify-center shadow-2xl hover:bg-spotify-h transition-all"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="m7.05 3.606 13.49 7.788a.7.7 0 0 1 0 1.212L7.05 20.394A.7.7 0 0 1 6 19.788V4.212a.7.7 0 0 1 1.05-.606z"/></svg></button></div><div class="font-bold mb-0.5 text-sm">Vishal-Shekhar</div><div class="text-subtext text-xs">Artist</div></div>
+          </div>
+        </section>
+
+        <!-- Made For You -->
+        <section class="mb-4">
+          <div class="flex justify-between items-center mb-5">
+            <h2 class="text-2xl font-black">Made For You</h2>
+            <a href="playlist.html" class="text-subtext font-bold text-sm hover:text-white transition hover:underline">Show all</a>
+          </div>
+          <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+            <div class="mcard bg-card p-4 rounded-xl cursor-pointer"><div class="aspect-square mb-4 rounded-lg bg-gradient-to-br from-blue-700 via-purple-600 to-pink-500 flex items-center justify-center shadow-xl"><svg width="56" height="56" viewBox="0 0 24 24" fill="white" opacity=".4"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg></div><div class="font-bold text-sm mb-1">Daily Mix 1</div><div class="text-subtext text-xs line-clamp-2">Arijit Singh, Pritam and more</div></div>
+            <div class="mcard bg-card p-4 rounded-xl cursor-pointer"><div class="aspect-square mb-4 rounded-lg bg-gradient-to-br from-green-600 to-teal-500 flex items-center justify-center shadow-xl"><svg width="56" height="56" viewBox="0 0 24 24" fill="white" opacity=".4"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg></div><div class="font-bold text-sm mb-1">Daily Mix 2</div><div class="text-subtext text-xs line-clamp-2">Sachin-Jigar, Vishal-Shekhar and more</div></div>
+            <div class="mcard bg-card p-4 rounded-xl cursor-pointer"><div class="aspect-square mb-4 rounded-lg bg-gradient-to-br from-orange-600 to-red-500 flex items-center justify-center shadow-xl"><svg width="56" height="56" viewBox="0 0 24 24" fill="white" opacity=".4"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg></div><div class="font-bold text-sm mb-1">Release Radar</div><div class="text-subtext text-xs line-clamp-2">Your weekly new releases</div></div>
+            <div class="mcard bg-card p-4 rounded-xl cursor-pointer"><div class="aspect-square mb-4 rounded-lg bg-gradient-to-br from-yellow-500 to-orange-400 flex items-center justify-center shadow-xl"><svg width="56" height="56" viewBox="0 0 24 24" fill="white" opacity=".4"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg></div><div class="font-bold text-sm mb-1">Discover Weekly</div><div class="text-subtext text-xs line-clamp-2">Your weekly mixtape of fresh music</div></div>
+            </div>
+          </section>
+        </div>
+
+      </div>
+    </div>
+  </main>
+</div><!-- end layout -->
+
+
+<!-- ═══════════ PLAYER BAR ═══════════ -->
+<div id="player-bar" class="h-[90px] bg-[#181818] border-t border-white/10 flex items-center px-4 gap-3 shrink-0 z-50">
+
+  <!-- Track info -->
+  <div class="flex items-center gap-3 w-[30%] min-w-0">
+    <div class="relative shrink-0">
+      <img id="player-cover" class="w-14 h-14 rounded object-cover shadow-md" src="assets/img/cover-3.svg" alt="" />
+      <div id="player-eq" class="absolute inset-0 bg-black/50 rounded hidden items-center justify-center gap-[3px]">
+        <span class="eq-bar"></span><span class="eq-bar"></span><span class="eq-bar"></span>
+      </div>
+    </div>
+    <div class="min-w-0 flex-1">
+      <div id="player-title" class="font-semibold text-sm truncate hover:underline cursor-pointer">Select a track</div>
+      <div id="player-artist" class="text-subtext text-xs truncate hover:text-white hover:underline cursor-pointer">—</div>
+    </div>
+    <button id="player-like" class="text-subtext hover:text-white transition shrink-0 p-1" aria-label="Save to library">
+      <svg id="like-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+    </button>
+  </div>
+
+  <!-- Controls -->
+  <div class="flex-1 max-w-[45%] flex flex-col items-center gap-2">
+    <div class="flex items-center gap-5">
+      <button id="btn-shuffle" class="text-subtext hover:text-white transition relative" aria-label="Shuffle">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/></svg>
+        <span id="shuffle-dot" class="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-spotify hidden"></span>
+      </button>
+      <button id="btn-prev" class="text-white hover:scale-105 transition" aria-label="Previous">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg>
+      </button>
+      <button id="btn-play" class="w-10 h-10 rounded-full bg-white text-black flex items-center justify-center hover:scale-105 transition shadow-md" aria-label="Play">
+        <svg id="play-svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="m7.05 3.606 13.49 7.788a.7.7 0 0 1 0 1.212L7.05 20.394A.7.7 0 0 1 6 19.788V4.212a.7.7 0 0 1 1.05-.606z"/></svg>
+      </button>
+      <button id="btn-next" class="text-white hover:scale-105 transition" aria-label="Next">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zm8.5-6L18 6v12z"/></svg>
+      </button>
+      <button id="btn-repeat" class="text-subtext hover:text-white transition relative" aria-label="Repeat">
+        <svg id="repeat-svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"/></svg>
+        <span id="repeat-dot" class="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-spotify hidden"></span>
+      </button>
+    </div>
+    <!-- Progress bar -->
+    <div class="flex items-center gap-2 w-full">
+      <span id="prog-time" class="text-subtext text-[11px] w-10 text-right tabular-nums">0:00</span>
+      <div id="prog-bar" class="prog-track flex-1 h-1" style="--pct:0%">
+        <div id="prog-fill" class="prog-fill" style="width:0%"></div>
+        <div class="prog-thumb"></div>
+      </div>
+      <span id="prog-dur" class="text-subtext text-[11px] w-10 tabular-nums">0:00</span>
+    </div>
+  </div>
+
+  <!-- Volume + extras -->
+  <div class="flex items-center justify-end gap-3 w-[25%]">
+    <button class="text-subtext hover:text-white transition hidden sm:block" title="Queue" aria-label="Queue">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 9h14V7H3v2zm0 4h14v-2H3v2zm0 4h8v-2H3v2zm13-1v-2l-5 3 5 3v-2h6v-2h-6z"/></svg>
+    </button>
+    <div class="vol-wrap flex items-center gap-1.5">
+      <button id="btn-mute" class="text-subtext hover:text-white transition" aria-label="Mute">
+        <svg id="vol-svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
+      </button>
+      <div class="w-24">
+        <input id="vol-slider" type="range" min="0" max="100" value="80" class="vol w-full" />
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Sign-up banner -->
+<div data-preview-banner class="bg-gradient-to-r from-[#af2896] to-[#509bf5] flex justify-between items-center px-4 sm:px-8 py-2.5 z-50 shrink-0">
+  <div>
+    <p class="text-[11px] font-bold tracking-widest uppercase mb-0.5">Preview of EchoWave</p>
+    <p class="font-semibold text-sm">Sign up to get unlimited songs and podcasts. No credit card needed.</p>
+  </div>
+  <a href="signup.html" class="bg-white text-black font-bold py-2.5 px-7 rounded-full hover:scale-105 transition text-sm shrink-0 whitespace-nowrap ml-4">Sign up free</a>
+</div>
+
+<!-- Mobile sidebar -->
+<div id="mob-backdrop" class="fixed inset-0 bg-black/70 z-40 hidden" aria-hidden="true"></div>
+<div id="mob-sidebar" class="fixed top-0 left-0 bottom-0 w-[260px] bg-base z-50 flex flex-col transform -translate-x-full transition-transform duration-300 overflow-y-auto p-6">
+  <div class="flex items-center justify-between mb-6">
+    <span class="text-xl font-black">EchoWave</span>
+    <button id="mob-close" class="text-subtext hover:text-white"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button>
+  </div>
+  <nav class="flex flex-col gap-3">
+    <a href="index.html" class="flex items-center gap-3 font-semibold text-white">Home</a>
+    <a href="search.html" class="flex items-center gap-3 font-semibold text-subtext hover:text-white">Search</a>
+    <a href="library.html" class="flex items-center gap-3 font-semibold text-subtext hover:text-white">Your Library</a>
+  </nav>
+</div>
+
+<audio id="audio-el"></audio>
+
+<script>
+// ─── Greeting ───────────────────────────────────────────────────────────────
+const hr = new Date().getHours();
+document.getElementById('greeting').textContent =
+  hr < 12 ? 'Good morning' : hr < 18 ? 'Good afternoon' : 'Good evening';
+
+// ─── Mobile sidebar ─────────────────────────────────────────────────────────
+const mobSidebar  = document.getElementById('mob-sidebar');
+const mobBackdrop = document.getElementById('mob-backdrop');
+const openMob  = () => { mobSidebar.classList.remove('-translate-x-full'); mobBackdrop.classList.remove('hidden'); };
+const closeMob = () => { mobSidebar.classList.add('-translate-x-full'); mobBackdrop.classList.add('hidden'); };
+document.getElementById('mob-toggle')?.addEventListener('click', openMob);
+document.getElementById('mob-close')?.addEventListener('click', closeMob);
+mobBackdrop.addEventListener('click', closeMob);
+
+// ─── Active nav ──────────────────────────────────────────────────────────────
+const cur = location.pathname.split('/').pop() || 'index.html';
+document.querySelectorAll('[data-nav-link]').forEach(a => {
+  const f = (a.getAttribute('href')||'').split('/').pop();
+  if (f === cur) a.classList.add('nav-active');
+});
+
+// ─── Back / Forward ──────────────────────────────────────────────────────────
+document.querySelectorAll('[data-action="back"]').forEach(b => b.addEventListener('click', ()=>history.back()));
+document.querySelectorAll('[data-action="forward"]').forEach(b => b.addEventListener('click', ()=>history.forward()));
+
+// ─── Full Player Logic ───────────────────────────────────────────────────────
+(() => {
+  const audio      = document.getElementById('audio-el');
+  const cover      = document.getElementById('player-cover');
+  const titleEl    = document.getElementById('player-title');
+  const artistEl   = document.getElementById('player-artist');
+  const eqEl       = document.getElementById('player-eq');
+  const playSvg    = document.getElementById('play-svg');
+  const btnPlay    = document.getElementById('btn-play');
+  const btnPrev    = document.getElementById('btn-prev');
+  const btnNext    = document.getElementById('btn-next');
+  const btnShuffle = document.getElementById('btn-shuffle');
+  const shuffleDot = document.getElementById('shuffle-dot');
+  const btnRepeat  = document.getElementById('btn-repeat');
+  const repeatDot  = document.getElementById('repeat-dot');
+  const repeatSvg  = document.getElementById('repeat-svg');
+  const likeBtn    = document.getElementById('player-like');
+  const likeSvg    = document.getElementById('like-svg');
+  const progBar    = document.getElementById('prog-bar');
+  const progFill   = document.getElementById('prog-fill');
+  const progTime   = document.getElementById('prog-time');
+  const progDur    = document.getElementById('prog-dur');
+  const volSlider  = document.getElementById('vol-slider');
+  const btnMute    = document.getElementById('btn-mute');
+  const volSvg     = document.getElementById('vol-svg');
+  const banner     = document.querySelector('[data-preview-banner]');
+
+  // Icons
+  const PLAY_ICON  = `<path d="m7.05 3.606 13.49 7.788a.7.7 0 0 1 0 1.212L7.05 20.394A.7.7 0 0 1 6 19.788V4.212a.7.7 0 0 1 1.05-.606z"/>`;
+  const PAUSE_ICON = `<path d="M5.7 3a.7.7 0 0 0-.7.7v16.6a.7.7 0 0 0 .7.7h2.6a.7.7 0 0 0 .7-.7V3.7a.7.7 0 0 0-.7-.7H5.7zm10 0a.7.7 0 0 0-.7.7v16.6a.7.7 0 0 0 .7.7h2.6a.7.7 0 0 0 .7-.7V3.7a.7.7 0 0 0-.7-.7h-2.6z"/>`;
+  const VOL_HIGH   = `<path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>`;
+  const VOL_MUTE   = `<path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/>`;
+  const REPEAT_ONE = `<path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4zm-4-2V9h-1l-2 1v1h1.5v6H13z"/>`;
+  const REPEAT_ALL = `<path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"/>`;
+
+  const fmt = s => { const t=Math.max(0,+s||0); return `${Math.floor(t/60)}:${String(Math.floor(t%60)).padStart(2,'0')}`; };
+
+  let queue     = [];  // all track els in order
+  let idx       = -1;
+  let isPlaying = false;
+  let shuffle   = false;
+  let repeat    = 0;   // 0=off 1=all 2=one
+  let liked     = false;
+  let prevVol   = 80;
+
+  // Collect all tracks on page
+  const buildQueue = () => {
+    queue = [...document.querySelectorAll('[data-track]')];
+  };
+
+  const getTrack = el => ({
+    title:    el.dataset.title || 'Untitled',
+    artist:   el.dataset.artist || '',
+    cover:    el.dataset.cover  || 'assets/img/cover-3.svg',
+    duration: +el.dataset.duration || 0,
+    audio:    el.dataset.audio  || '',
+  });
+
+  const setUI = () => {
+    playSvg.innerHTML = isPlaying ? PAUSE_ICON : PLAY_ICON;
+    btnPlay.setAttribute('aria-label', isPlaying ? 'Pause' : 'Play');
+    eqEl.style.display = isPlaying ? 'flex' : 'none';
+  };
+
+  const updateProg = () => {
+    const dur = audio.duration || queue[idx] && getTrack(queue[idx]).duration || 0;
+    const cur = audio.currentTime || 0;
+    const pct = dur ? (cur/dur)*100 : 0;
+    progFill.style.width = pct+'%';
+    progBar.style.setProperty('--pct', pct+'%');
+    progTime.textContent = fmt(cur);
+    progDur.textContent  = fmt(dur);
+  };
+
+  const loadTrack = (el) => {
+    const t = getTrack(el);
+    cover.src       = t.cover;
+    titleEl.textContent  = t.title;
+    artistEl.textContent = t.artist;
+    liked = false;
+    likeSvg.setAttribute('fill','none');
+    likeSvg.setAttribute('stroke','currentColor');
+
+    if (t.audio) {
+      audio.src = t.audio;
+    } else {
+      audio.removeAttribute('src');
+      audio.load();
+    }
+    updateProg();
+    if (banner) banner.classList.add('hidden');
+  };
+
+  const playIdx = (i) => {
+    if (i < 0 || i >= queue.length) return;
+    idx = i;
+    loadTrack(queue[idx]);
+    if (queue[idx].dataset.audio) {
+      audio.play().then(() => { isPlaying = true; setUI(); }).catch(() => simulatePlay());
+    } else {
+      simulatePlay();
+    }
+  };
+
+  // Simulate playback if no real audio
+  let simTimer = null, simStart = 0, simOffset = 0;
+  const simulatePlay = () => {
+    isPlaying = true; simStart = Date.now(); setUI();
+    clearInterval(simTimer);
+    const dur = (queue[idx] && getTrack(queue[idx]).duration) || 200;
+    simTimer = setInterval(() => {
+      const elapsed = (Date.now()-simStart)/1000 + simOffset;
+      audio.currentTime = 0; // keep at 0 for audio element
+      // manually update progress
+      const pct = Math.min(100,(elapsed/dur)*100);
+      progFill.style.width = pct+'%';
+      progBar.style.setProperty('--pct',pct+'%');
+      progTime.textContent = fmt(elapsed);
+      progDur.textContent  = fmt(dur);
+      if (elapsed >= dur) { clearInterval(simTimer); onTrackEnd(); }
+    },300);
+  };
+
+  const onTrackEnd = () => {
+    isPlaying = false; setUI();
+    if (repeat === 2) { playIdx(idx); return; }
+    let next = idx+1;
+    if (shuffle) next = Math.floor(Math.random()*queue.length);
+    if (next >= queue.length) { if (repeat===1) next=0; else return; }
+    playIdx(next);
+  };
+
+  // Pause helpers
+  const pauseAudio = () => {
+    audio.pause();
+    clearInterval(simTimer);
+    simOffset += (Date.now()-simStart)/1000;
+    isPlaying = false; setUI();
+  };
+  const resumeAudio = () => {
+    if (!queue[idx]) return;
+    if (queue[idx].dataset.audio) {
+      audio.play().then(()=>{ isPlaying=true; setUI(); }).catch(simulatePlay);
+    } else { simStart=Date.now(); simulatePlay(); }
+  };
+
+  // Buttons
+  btnPlay.addEventListener('click', () => {
+    if (idx < 0) { buildQueue(); playIdx(0); return; }
+    if (isPlaying) pauseAudio(); else resumeAudio();
+  });
+
+  btnPrev.addEventListener('click', () => {
+    buildQueue();
+    if (audio.currentTime > 3 || !simOffset) { audio.currentTime=0; simOffset=0; return; }
+    playIdx(Math.max(0, idx-1));
+  });
+
+  btnNext.addEventListener('click', () => {
+    buildQueue();
+    let next = shuffle ? Math.floor(Math.random()*queue.length) : idx+1;
+    if (next >= queue.length) next = 0;
+    playIdx(next);
+  });
+
+  btnShuffle.addEventListener('click', () => {
+    shuffle = !shuffle;
+    btnShuffle.classList.toggle('text-spotify', shuffle);
+    btnShuffle.classList.toggle('text-subtext', !shuffle);
+    shuffleDot.classList.toggle('hidden', !shuffle);
+  });
+
+  btnRepeat.addEventListener('click', () => {
+    repeat = (repeat+1)%3;
+    const active = repeat>0;
+    btnRepeat.classList.toggle('text-spotify', active);
+    btnRepeat.classList.toggle('text-subtext', !active);
+    repeatDot.classList.toggle('hidden', !active);
+    repeatSvg.innerHTML = repeat===2 ? REPEAT_ONE : REPEAT_ALL;
+  });
+
+  likeBtn.addEventListener('click', () => {
+    liked = !liked;
+    likeBtn.classList.add('liked-anim');
+    setTimeout(()=>likeBtn.classList.remove('liked-anim'),300);
+    if (liked) {
+      likeSvg.setAttribute('fill','#1DB954');
+      likeSvg.setAttribute('stroke','#1DB954');
+      likeBtn.classList.replace('text-subtext','text-spotify');
+    } else {
+      likeSvg.setAttribute('fill','none');
+      likeSvg.setAttribute('stroke','currentColor');
+      likeBtn.classList.replace('text-spotify','text-subtext');
+    }
+  });
+
+  // Progress click
+  progBar.addEventListener('click', e => {
+    const r = progBar.getBoundingClientRect();
+    const pct = Math.max(0,Math.min(1,(e.clientX-r.left)/r.width));
+    const dur = audio.duration || (queue[idx]&&getTrack(queue[idx]).duration)||0;
+    if (audio.duration) { audio.currentTime = audio.duration*pct; }
+    else { simOffset = dur*pct; simStart = Date.now(); }
+    updateProg();
+  });
+
+  // Volume
+  const updateVolIcon = (v) => {
+    if (v===0) volSvg.innerHTML = VOL_MUTE;
+    else volSvg.innerHTML = VOL_HIGH;
+    const pct = v+'%';
+    volSlider.style.background = `linear-gradient(to right,#fff ${pct},#555 ${pct})`;
+  };
+  volSlider.addEventListener('input', () => {
+    const v = +volSlider.value; audio.volume = v/100; updateVolIcon(v);
+  });
+  btnMute.addEventListener('click', () => {
+    if (audio.volume>0) { prevVol=audio.volume*100; audio.volume=0; volSlider.value=0; updateVolIcon(0); }
+    else { audio.volume=prevVol/100; volSlider.value=prevVol; updateVolIcon(prevVol); }
+  });
+  updateVolIcon(80); audio.volume=0.8;
+
+  // Track play buttons
+  document.addEventListener('click', e => {
+    const btn = e.target.closest('[data-track-play]');
+    if (!btn) return;
+    e.preventDefault();
+    const el = btn.closest('[data-track]');
+    if (!el) return;
+    buildQueue();
+    const i = queue.indexOf(el);
+    if (i === idx) { if (isPlaying) pauseAudio(); else resumeAudio(); }
+    else { playIdx(i >= 0 ? i : 0); }
+  });
+
+  // Also click anywhere on card
+  document.addEventListener('click', e => {
+    const card = e.target.closest('[data-track]');
+    if (!card || e.target.closest('[data-track-play]')) return;
+    buildQueue();
+    const i = queue.indexOf(card);
+    if (i === idx) { if (isPlaying) pauseAudio(); else resumeAudio(); }
+    else if (i >= 0) playIdx(i);
+  });
+
+  // Audio events
+  audio.addEventListener('timeupdate', updateProg);
+  audio.addEventListener('loadedmetadata', updateProg);
+  audio.addEventListener('ended', onTrackEnd);
+})();
+</script>
+
+<script src="assets/client.js" defer></script>
+</body>
+</html>
