@@ -18,5 +18,3 @@ server.on("error", (err) => {
   console.error("Server error:", err);
   process.exit(1);
 });
-
-// Trigger redeploy
