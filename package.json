@@ -3,5 +3,8 @@
   "private": true,
   "workspaces": [
     "server"
-  ]
+  ],
+  "scripts": {
+    "start": "npm run start -w server"
+  }
 }
